@@ -1,5 +1,6 @@
-import Token from './token.model';
-import User from './user.model';
+import Token from './token.model.js';
+import User from './user.model.js';
+import City from './city.model.js';
 
-export { Token, User };
+export { Token, User, City };
 

@@ -17,7 +17,14 @@ const tokenSchema = mongoose.Schema(
     },
     type: {
       type: String,
-      enum: [tokenTypes.REFRESH, tokenTypes.RESET_PASSWORD, tokenTypes.VERIFY_EMAIL],
+      enum: [
+        tokenTypes.REFRESH, 
+        tokenTypes.RESET_PASSWORD, 
+        tokenTypes.VERIFY_EMAIL,
+        tokenTypes.EMAIL_OTP,
+        tokenTypes.PASSWORD_RESET_OTP,
+        tokenTypes.PHONE_OTP
+      ],
       required: true,
     },
     expires: {

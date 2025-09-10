@@ -16,6 +16,21 @@ router.post('/reset-password', validate(authValidation.resetPassword), authContr
 router.post('/send-verification-email', auth(), authController.sendVerificationEmail);
 router.post('/verify-email', validate(authValidation.verifyEmail), authController.verifyEmail);
 
+// OTP-based authentication routes
+router.post('/send-otp', validate(authValidation.sendOTP), authController.sendOTP);
+router.post('/verify-otp', validate(authValidation.verifyOTP), authController.verifyOTPCode);
+router.post('/login-otp', validate(authValidation.loginWithOTP), authController.loginWithOTPCode);
+router.post('/register-otp', validate(authValidation.registerWithOTP), authController.registerWithOTPCode);
+router.post('/reset-password-otp', validate(authValidation.resetPasswordWithOTP), authController.resetPasswordWithOTPCode);
+router.post('/guest-login', authController.guestLoginController);
+
+// New flow routes (email/password + OTP verification)
+router.post('/login-with-otp', validate(authValidation.loginWithPasswordAndSendOTP), authController.loginWithPasswordAndSendOTPController);
+router.post('/complete-login-otp', validate(authValidation.completeLoginWithOTP), authController.completeLoginWithOTPController);
+router.post('/register-with-otp', validate(authValidation.registerWithPasswordAndSendOTP), authController.registerWithPasswordAndSendOTPController);
+router.post('/verify-registration-otp', validate(authValidation.verifyRegistrationOTP), authController.verifyRegistrationOTPController);
+router.post('/complete-registration-profile', validate(authValidation.completeRegistrationWithProfile), authController.completeRegistrationWithProfileController);
+
 export default router;
 
 

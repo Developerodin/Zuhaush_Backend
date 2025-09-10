@@ -17,6 +17,17 @@ router
   .patch(auth('manageUsers'), validate(userValidation.updateUser), userController.updateUser)
   .delete(auth('manageUsers'), validate(userValidation.deleteUser), userController.deleteUser);
 
+// Profile routes
+router
+  .route('/profile')
+  .get(auth(), userController.getProfile)
+  .patch(auth(), userController.updateProfile);
+
+router
+  .route('/preferences')
+  .get(auth(), userController.getPreferences)
+  .post(auth(), userController.updatePreferences);
+
   export default router;
 
 /**

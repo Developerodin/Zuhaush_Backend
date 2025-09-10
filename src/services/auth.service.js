@@ -1,9 +1,14 @@
 import httpStatus from 'http-status';
-import {verifyToken,generateAuthTokens} from './token.service.js';
-import {getUserByEmail,getUserById,updateUserById} from './user.service.js';
+import { verifyToken, generateAuthTokens } from './token.service.js';
+import { getUserByEmail, getUserById, updateUserById, createUser } from './user.service.js';
 import Token from '../models/token.model.js';
 import ApiError from '../utils/ApiError.js';
 import { tokenTypes } from '../config/tokens.js';
+import {
+  sendEmailVerificationOTP as sendEmailOTP,
+  sendPasswordResetOTP as sendPasswordResetOTPEmail,
+  verifyOTP as verifyOTPService,
+} from './otp.service.js';
 
 /**
  * Login with username and password
@@ -90,11 +95,239 @@ const verifyEmail = async (verifyEmailToken) => {
   }
 };
 
+/**
+ * Send OTP for email verification
+ * @param {string} email
+ * @returns {Promise<Object>}
+ */
+const sendEmailVerificationOTP = async (email) => {
+  return sendEmailOTP(email);
+};
+
+/**
+ * Send OTP for password reset
+ * @param {string} email
+ * @returns {Promise<Object>}
+ */
+const sendPasswordResetOTP = async (email) => {
+  return sendPasswordResetOTPEmail(email);
+};
+
+/**
+ * Verify OTP
+ * @param {string} email
+ * @param {string} otp
+ * @param {string} type
+ * @returns {Promise<Object>}
+ */
+const verifyOTP = async (email, otp, type) => {
+  return verifyOTPService(email, otp, type);
+};
+
+/**
+ * Login with OTP
+ * @param {string} email
+ * @param {string} otp
+ * @returns {Promise<Object>}
+ */
+const loginWithOTP = async (email, otp) => {
+  const result = await verifyOTP(email, otp, 'email_verification');
+  const user = await getUserById(result.userId);
+
+  // Update last login
+  await updateUserById(user.id, { lastLoginAt: new Date() });
+
+  // Generate auth tokens
+  const tokens = await generateAuthTokens(user);
+
+  return { user, tokens };
+};
+
+/**
+ * Register with OTP
+ * @param {string} email
+ * @param {string} otp
+ * @param {Object} userData
+ * @returns {Promise<Object>}
+ */
+const registerWithOTP = async (email, otp, userData) => {
+  const result = await verifyOTP(email, otp, 'email_verification');
+  const user = await getUserById(result.userId);
+
+  // Update user data and mark email as verified
+  await updateUserById(user.id, {
+    ...userData,
+    isEmailVerified: true,
+    lastLoginAt: new Date(),
+  });
+
+  // Generate auth tokens
+  const tokens = await generateAuthTokens(user);
+
+  return { user, tokens };
+};
+
+/**
+ * Reset password with OTP
+ * @param {string} email
+ * @param {string} otp
+ * @param {string} newPassword
+ * @returns {Promise<Object>}
+ */
+const resetPasswordWithOTP = async (email, otp, newPassword) => {
+  const result = await verifyOTP(email, otp, 'password_reset');
+  const user = await getUserById(result.userId);
+
+  // Update password
+  await updateUserById(user.id, { password: newPassword });
+
+  // Delete all password reset tokens
+  await Token.deleteMany({ user: user.id, type: tokenTypes.PASSWORD_RESET_OTP });
+
+  return { message: 'Password reset successfully' };
+};
+
+/**
+ * Login with email/password and send OTP
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<Object>}
+ */
+const loginWithPasswordAndSendOTP = async (email, password) => {
+  const user = await loginUserWithEmailAndPassword(email, password);
+  
+  // Send OTP for email verification
+  await sendEmailOTP(email, 'email_verification');
+  
+  return { 
+    message: 'OTP sent to your email. Please verify to complete login.',
+    userId: user.id,
+    email: user.email 
+  };
+};
+
+/**
+ * Complete login with OTP verification
+ * @param {string} email
+ * @param {string} otp
+ * @returns {Promise<Object>}
+ */
+const completeLoginWithOTP = async (email, otp) => {
+  const result = await verifyOTPService(email, otp, 'email_verification');
+  const user = await getUserById(result.userId);
+  
+  // Update last login
+  await updateUserById(user.id, { lastLoginAt: new Date() });
+  
+  // Generate auth tokens
+  const tokens = await generateAuthTokens(user);
+  
+  return { user, tokens };
+};
+
+/**
+ * Register with email/password and send OTP
+ * @param {Object} userData
+ * @returns {Promise<Object>}
+ */
+const registerWithPasswordAndSendOTP = async (userData) => {
+  const { email, password } = userData;
+  
+  // Create user with only email and password
+  const user = await createUser({ email, password });
+  
+  // Send OTP for email verification
+  await sendEmailOTP(email, 'email_verification');
+  
+  return { 
+    message: 'OTP sent to your email. Please verify to complete registration.',
+    userId: user.id,
+    email: user.email 
+  };
+};
+
+/**
+ * Verify OTP for registration (Step 2)
+ * @param {string} email
+ * @param {string} otp
+ * @returns {Promise<Object>}
+ */
+const verifyRegistrationOTP = async (email, otp) => {
+  const result = await verifyOTPService(email, otp, 'email_verification');
+  const user = await getUserById(result.userId);
+  
+  return { 
+    message: 'OTP verified successfully. Please complete your profile.',
+    userId: user.id,
+    email: user.email 
+  };
+};
+
+/**
+ * Complete registration with profile details (Step 3)
+ * @param {string} userId
+ * @param {Object} profileData
+ * @returns {Promise<Object>}
+ */
+const completeRegistrationWithProfile = async (userId, profileData) => {
+  const user = await getUserById(userId);
+  
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  
+  // Update user with complete profile data and mark email as verified
+  await updateUserById(user.id, {
+    ...profileData,
+    isEmailVerified: true,
+    lastLoginAt: new Date(),
+  });
+  
+  // Generate auth tokens
+  const tokens = await generateAuthTokens(user);
+  
+  return { user, tokens };
+};
+
+/**
+ * Guest login
+ * @returns {Promise<Object>}
+ */
+const guestLogin = async () => {
+  // Create a temporary guest user
+  const guestUser = {
+    id: `guest_${Date.now()}`,
+    name: 'Guest User',
+    email: 'guest@zuhaush.com',
+    role: 'guest',
+    accountType: 'guest',
+    isEmailVerified: false,
+    isActive: true,
+  };
+
+  // Generate temporary token
+  const tokens = await generateAuthTokens(guestUser);
+
+  return { user: guestUser, tokens };
+};
+
 export {
   loginUserWithEmailAndPassword,
   logout,
   refreshAuth,
   resetPassword,
   verifyEmail,
+  sendEmailVerificationOTP,
+  sendPasswordResetOTP,
+  verifyOTP,
+  loginWithOTP,
+  registerWithOTP,
+  resetPasswordWithOTP,
+  loginWithPasswordAndSendOTP,
+  completeLoginWithOTP,
+  registerWithPasswordAndSendOTP,
+  verifyRegistrationOTP,
+  completeRegistrationWithProfile,
+  guestLogin,
 };
 

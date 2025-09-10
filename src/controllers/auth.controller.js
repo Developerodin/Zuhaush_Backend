@@ -1,11 +1,27 @@
 import httpStatus from 'http-status';
 import catchAsync from '../utils/catchAsync.js';
 import { createUser } from '../services/user.service.js';
-import { generateAuthTokens,generateResetPasswordToken,generateVerifyEmailToken } from '../services/token.service.js';
-import { loginUserWithEmailAndPassword,logout as logout2,refreshAuth,resetPassword as resetPassword2,verifyEmail as verifyEmail2  } from '../services/auth.service.js';
-import { sendResetPasswordEmail,sendVerificationEmail as sendVerificationEmail2  } from '../services/email.service.js';
-// import { authService, userService, tokenService, emailService } from '../services/index.js';
-// import { authService, userService, tokenService, emailService } from '../services';
+import { generateAuthTokens, generateResetPasswordToken, generateVerifyEmailToken } from '../services/token.service.js';
+import {
+  loginUserWithEmailAndPassword,
+  logout as logout2,
+  refreshAuth,
+  resetPassword as resetPassword2,
+  verifyEmail as verifyEmail2,
+  sendEmailVerificationOTP,
+  sendPasswordResetOTP,
+  verifyOTP,
+  loginWithOTP,
+  registerWithOTP,
+  resetPasswordWithOTP,
+  loginWithPasswordAndSendOTP,
+  completeLoginWithOTP,
+  registerWithPasswordAndSendOTP,
+  verifyRegistrationOTP,
+  completeRegistrationWithProfile,
+  guestLogin,
+} from '../services/auth.service.js';
+import { sendResetPasswordEmail, sendVerificationEmail as sendVerificationEmail2 } from '../services/email.service.js';
 
 
 const register = catchAsync(async (req, res) => {
@@ -53,6 +69,81 @@ const verifyEmail = catchAsync(async (req, res) => {
   res.status(httpStatus.NO_CONTENT).send();
 });
 
+// OTP-based authentication endpoints
+const sendOTP = catchAsync(async (req, res) => {
+  const { email, type } = req.body;
+  let result;
+
+  if (type === 'email_verification') {
+    result = await sendEmailVerificationOTP(email);
+  } else if (type === 'password_reset') {
+    result = await sendPasswordResetOTP(email);
+  } else {
+    return res.status(httpStatus.BAD_REQUEST).json({ message: 'Invalid OTP type' });
+  }
+
+  res.status(httpStatus.OK).json(result);
+});
+
+const verifyOTPCode = catchAsync(async (req, res) => {
+  const { email, otp, type } = req.body;
+  const result = await verifyOTP(email, otp, type);
+  res.status(httpStatus.OK).json(result);
+});
+
+const loginWithOTPCode = catchAsync(async (req, res) => {
+  const { email, otp } = req.body;
+  const result = await loginWithOTP(email, otp);
+  res.status(httpStatus.OK).json(result);
+});
+
+const registerWithOTPCode = catchAsync(async (req, res) => {
+  const { email, otp, ...userData } = req.body;
+  const result = await registerWithOTP(email, otp, userData);
+  res.status(httpStatus.CREATED).json(result);
+});
+
+const resetPasswordWithOTPCode = catchAsync(async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  const result = await resetPasswordWithOTP(email, otp, newPassword);
+  res.status(httpStatus.OK).json(result);
+});
+
+const guestLoginController = catchAsync(async (req, res) => {
+  const result = await guestLogin();
+  res.status(httpStatus.OK).json(result);
+});
+
+// New flow endpoints
+const loginWithPasswordAndSendOTPController = catchAsync(async (req, res) => {
+  const { email, password } = req.body;
+  const result = await loginWithPasswordAndSendOTP(email, password);
+  res.status(httpStatus.OK).json(result);
+});
+
+const completeLoginWithOTPController = catchAsync(async (req, res) => {
+  const { email, otp } = req.body;
+  const result = await completeLoginWithOTP(email, otp);
+  res.status(httpStatus.OK).json(result);
+});
+
+const registerWithPasswordAndSendOTPController = catchAsync(async (req, res) => {
+  const result = await registerWithPasswordAndSendOTP(req.body);
+  res.status(httpStatus.OK).json(result);
+});
+
+const verifyRegistrationOTPController = catchAsync(async (req, res) => {
+  const { email, otp } = req.body;
+  const result = await verifyRegistrationOTP(email, otp);
+  res.status(httpStatus.OK).json(result);
+});
+
+const completeRegistrationWithProfileController = catchAsync(async (req, res) => {
+  const { userId, ...profileData } = req.body;
+  const result = await completeRegistrationWithProfile(userId, profileData);
+  res.status(httpStatus.OK).json(result);
+});
+
 export {
   register,
   login,
@@ -62,4 +153,15 @@ export {
   resetPassword,
   sendVerificationEmail,
   verifyEmail,
+  sendOTP,
+  verifyOTPCode,
+  loginWithOTPCode,
+  registerWithOTPCode,
+  resetPasswordWithOTPCode,
+  loginWithPasswordAndSendOTPController,
+  completeLoginWithOTPController,
+  registerWithPasswordAndSendOTPController,
+  verifyRegistrationOTPController,
+  completeRegistrationWithProfileController,
+  guestLoginController,
 };

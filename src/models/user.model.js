@@ -10,7 +10,7 @@ const userSchema = mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     email: {
@@ -37,6 +37,21 @@ const userSchema = mongoose.Schema(
       },
       private: true, // used by the toJSON plugin
     },
+    contactNumber: {
+      type: String,
+      required: false,
+      trim: true,
+      validate(value) {
+        if (value && !/^\+?[1-9]\d{1,14}$/.test(value)) {
+          throw new Error('Invalid phone number format');
+        }
+      },
+    },
+    city: {
+      type: String,
+      required: false,
+      trim: true,
+    },
     role: {
       type: String,
       enum: roles,
@@ -45,6 +60,30 @@ const userSchema = mongoose.Schema(
     isEmailVerified: {
       type: Boolean,
       default: false,
+    },
+    isPhoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+    accountType: {
+      type: String,
+      enum: ['registered', 'guest'],
+      default: 'registered',
+    },
+    preferences: {
+      propertyTypes: [String],
+      budgetRange: {
+        min: Number,
+        max: Number,
+      },
+      locations: [String],
+    },
+    lastLoginAt: {
+      type: Date,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {

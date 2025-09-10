@@ -35,11 +35,35 @@ const deleteUser = catchAsync(async (req, res) => {
   res.status(httpStatus.NO_CONTENT).send();
 });
 
+const getProfile = catchAsync(async (req, res) => {
+  const user = await userService.getUserById(req.user.id);
+  res.send(user);
+});
+
+const updateProfile = catchAsync(async (req, res) => {
+  const user = await userService.updateUserById(req.user.id, req.body);
+  res.send(user);
+});
+
+const updatePreferences = catchAsync(async (req, res) => {
+  const user = await userService.updateUserById(req.user.id, { preferences: req.body });
+  res.send(user);
+});
+
+const getPreferences = catchAsync(async (req, res) => {
+  const user = await userService.getUserById(req.user.id);
+  res.send({ preferences: user.preferences });
+});
+
 export {
   createUser,
   getUsers,
   getUser,
   updateUser,
   deleteUser,
+  getProfile,
+  updateProfile,
+  updatePreferences,
+  getPreferences,
 };
 

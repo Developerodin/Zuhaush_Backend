@@ -19,6 +19,9 @@ import {
   registerWithPasswordAndSendOTP,
   verifyRegistrationOTP,
   completeRegistrationWithProfile,
+  sendForgotPasswordOTP,
+  verifyForgotPasswordOTP,
+  resetPasswordWithVerifiedOTP,
   guestLogin,
 } from '../services/auth.service.js';
 import { sendResetPasswordEmail, sendVerificationEmail as sendVerificationEmail2 } from '../services/email.service.js';
@@ -144,6 +147,25 @@ const completeRegistrationWithProfileController = catchAsync(async (req, res) =>
   res.status(httpStatus.OK).json(result);
 });
 
+// 3-Step Forgot Password Flow
+const sendForgotPasswordOTPController = catchAsync(async (req, res) => {
+  const { email } = req.body;
+  const result = await sendForgotPasswordOTP(email);
+  res.status(httpStatus.OK).json(result);
+});
+
+const verifyForgotPasswordOTPController = catchAsync(async (req, res) => {
+  const { email, otp } = req.body;
+  const result = await verifyForgotPasswordOTP(email, otp);
+  res.status(httpStatus.OK).json(result);
+});
+
+const resetPasswordWithVerifiedOTPController = catchAsync(async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  const result = await resetPasswordWithVerifiedOTP(email, otp, newPassword);
+  res.status(httpStatus.OK).json(result);
+});
+
 export {
   register,
   login,
@@ -163,5 +185,8 @@ export {
   registerWithPasswordAndSendOTPController,
   verifyRegistrationOTPController,
   completeRegistrationWithProfileController,
+  sendForgotPasswordOTPController,
+  verifyForgotPasswordOTPController,
+  resetPasswordWithVerifiedOTPController,
   guestLoginController,
 };

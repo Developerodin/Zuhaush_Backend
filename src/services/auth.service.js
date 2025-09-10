@@ -8,6 +8,7 @@ import {
   sendEmailVerificationOTP as sendEmailOTP,
   sendPasswordResetOTP as sendPasswordResetOTPEmail,
   verifyOTP as verifyOTPService,
+  verifyOTPWithoutBlacklist,
 } from './otp.service.js';
 
 /**
@@ -290,6 +291,64 @@ const completeRegistrationWithProfile = async (userId, profileData) => {
 };
 
 /**
+ * Step 1: Send OTP for password reset
+ * @param {string} email
+ * @returns {Promise<Object>}
+ */
+const sendForgotPasswordOTP = async (email) => {
+  // Check if user exists
+  const user = await getUserByEmail(email);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  // Send OTP for password reset
+  await sendPasswordResetOTP(email);
+  
+  return { 
+    message: 'OTP sent to your email for password reset.',
+    email: email 
+  };
+};
+
+/**
+ * Step 2: Verify OTP for password reset
+ * @param {string} email
+ * @param {string} otp
+ * @returns {Promise<Object>}
+ */
+const verifyForgotPasswordOTP = async (email, otp) => {
+  const result = await verifyOTPWithoutBlacklist(email, otp, 'password_reset'); // Don't blacklist the OTP yet
+  
+  return { 
+    message: 'OTP verified successfully. You can now reset your password.',
+    email: email,
+    resetToken: result.resetToken || 'verified' // You can generate a token here if needed
+  };
+};
+
+/**
+ * Step 3: Reset password with verified OTP
+ * @param {string} email
+ * @param {string} otp
+ * @param {string} newPassword
+ * @returns {Promise<Object>}
+ */
+const resetPasswordWithVerifiedOTP = async (email, otp, newPassword) => {
+  // Verify OTP again to ensure it's still valid and blacklist it
+  const result = await verifyOTPService(email, otp, 'password_reset'); // This will blacklist the OTP
+  const user = await getUserById(result.userId);
+
+  // Update password
+  await updateUserById(user.id, { password: newPassword });
+
+  // Delete all password reset OTP tokens
+  await Token.deleteMany({ user: user.id, type: tokenTypes.PASSWORD_RESET_OTP });
+
+  return { message: 'Password reset successfully' };
+};
+
+/**
  * Guest login
  * @returns {Promise<Object>}
  */
@@ -328,6 +387,9 @@ export {
   registerWithPasswordAndSendOTP,
   verifyRegistrationOTP,
   completeRegistrationWithProfile,
+  sendForgotPasswordOTP,
+  verifyForgotPasswordOTP,
+  resetPasswordWithVerifiedOTP,
   guestLogin,
 };
 

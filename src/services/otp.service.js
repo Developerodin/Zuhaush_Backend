@@ -189,9 +189,10 @@ const sendPasswordResetOTP = async (email) => {
  * @param {string} email
  * @param {string} otp
  * @param {string} type
+ * @param {boolean} blacklistAfterVerification - Whether to blacklist the OTP after verification
  * @returns {Promise<Object>}
  */
-const verifyOTP = async (email, otp, type) => {
+const verifyOTP = async (email, otp, type, blacklistAfterVerification = true) => {
   const user = await getUserByEmail(email);
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'No user found with this email');
@@ -204,6 +205,7 @@ const verifyOTP = async (email, otp, type) => {
 
   // Find the OTP token
   const tokenType = type === 'email_verification' ? tokenTypes.EMAIL_OTP : tokenTypes.PASSWORD_RESET_OTP;
+  
   const otpTokenDoc = await Token.findOne({
     user: user.id,
     type: tokenType,
@@ -228,11 +230,26 @@ const verifyOTP = async (email, otp, type) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
   }
 
-  // Clear attempts and blacklist the OTP token
+  // Clear attempts
   clearAttempts(email, type);
-  await Token.findByIdAndUpdate(otpTokenDoc._id, { blacklisted: true });
+  
+  // Blacklist the OTP token only if requested
+  if (blacklistAfterVerification) {
+    await Token.findByIdAndUpdate(otpTokenDoc._id, { blacklisted: true });
+  }
 
   return { message: 'OTP verified successfully', userId: user.id };
+};
+
+/**
+ * Verify OTP without blacklisting (for multi-step flows)
+ * @param {string} email
+ * @param {string} otp
+ * @param {string} type
+ * @returns {Promise<Object>}
+ */
+const verifyOTPWithoutBlacklist = async (email, otp, type) => {
+  return verifyOTP(email, otp, type, false);
 };
 
 /**
@@ -255,5 +272,6 @@ export {
   sendEmailVerificationOTP,
   sendPasswordResetOTP,
   verifyOTP,
+  verifyOTPWithoutBlacklist,
   resendOTP,
 };

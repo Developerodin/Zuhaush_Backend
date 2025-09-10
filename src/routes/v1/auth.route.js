@@ -31,6 +31,11 @@ router.post('/register-with-otp', validate(authValidation.registerWithPasswordAn
 router.post('/verify-registration-otp', validate(authValidation.verifyRegistrationOTP), authController.verifyRegistrationOTPController);
 router.post('/complete-registration-profile', validate(authValidation.completeRegistrationWithProfile), authController.completeRegistrationWithProfileController);
 
+// 3-Step Forgot Password Flow
+router.post('/forgot-password-otp', validate(authValidation.sendForgotPasswordOTP), authController.sendForgotPasswordOTPController);
+router.post('/verify-forgot-password-otp', validate(authValidation.verifyForgotPasswordOTP), authController.verifyForgotPasswordOTPController);
+router.post('/reset-password-otp', validate(authValidation.resetPasswordWithVerifiedOTP), authController.resetPasswordWithVerifiedOTPController);
+
 export default router;
 
 

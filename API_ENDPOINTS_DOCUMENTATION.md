@@ -210,6 +210,65 @@ Content-Type: application/json
 }
 ```
 
+### 3-Step Forgot Password Flow (New)
+
+#### Step 1: Send OTP for Password Reset
+```http
+POST /auth/forgot-password-otp
+Content-Type: application/json
+
+{
+  "email": "john@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "OTP sent to your email for password reset.",
+  "email": "john@example.com"
+}
+```
+
+#### Step 2: Verify OTP
+```http
+POST /auth/verify-forgot-password-otp
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "otp": "123456"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "OTP verified successfully. You can now reset your password.",
+  "email": "john@example.com",
+  "resetToken": "verified"
+}
+```
+
+#### Step 3: Reset Password with Verified OTP
+```http
+POST /auth/reset-password-otp
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "otp": "123456",
+  "newPassword": "newpassword123"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Password reset successfully"
+}
+```
+
 #### Guest Login
 ```http
 POST /auth/guest-login

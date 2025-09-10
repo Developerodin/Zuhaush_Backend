@@ -14,34 +14,14 @@ http://localhost:3000/api/v1
 
 ### 1. Login Flow
 
-#### Step 1: Login with Email and Password
+#### Direct Login with Email and Password
 ```http
-POST /auth/login-with-otp
+POST /v1/auth/login
 Content-Type: application/json
 
 {
   "email": "john@example.com",
   "password": "password123"
-}
-```
-
-**Response:**
-```json
-{
-  "message": "OTP sent to your email. Please verify to complete login.",
-  "userId": "60f7b3b3b3b3b3b3b3b3b3b3",
-  "email": "john@example.com"
-}
-```
-
-#### Step 2: Complete Login with OTP
-```http
-POST /auth/complete-login-otp
-Content-Type: application/json
-
-{
-  "email": "john@example.com",
-  "otp": "123456"
 }
 ```
 
@@ -72,7 +52,66 @@ Content-Type: application/json
 }
 ```
 
-### 2. Registration Flow
+### 2. Forgot Password Flow (3 Steps)
+
+#### Step 1: Send OTP to Email
+```http
+POST /v1/auth/forgot-password-otp
+Content-Type: application/json
+
+{
+  "email": "john@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "OTP sent to your email for password reset.",
+  "email": "john@example.com"
+}
+```
+
+#### Step 2: Verify OTP
+```http
+POST /v1/auth/verify-forgot-password-otp
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "otp": "123456"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "OTP verified successfully. You can now reset your password.",
+  "email": "john@example.com",
+  "resetToken": "verified"
+}
+```
+
+#### Step 3: Reset Password
+```http
+POST /v1/auth/reset-password-otp
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "otp": "123456",
+  "newPassword": "newpassword123"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Password reset successfully"
+}
+```
+
+### 3. Registration Flow
 
 #### Step 1: Register with Email and Password
 ```http

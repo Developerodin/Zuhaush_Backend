@@ -139,6 +139,28 @@ const completeRegistrationWithProfile = {
 
 const guestLogin = {};
 
+// 3-Step Forgot Password Flow Validations
+const sendForgotPasswordOTP = {
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+  }),
+};
+
+const verifyForgotPasswordOTP = {
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+    otp: Joi.string().length(6).pattern(/^\d+$/).required(),
+  }),
+};
+
+const resetPasswordWithVerifiedOTP = {
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+    otp: Joi.string().length(6).pattern(/^\d+$/).required(),
+    newPassword: Joi.string().required().custom(password),
+  }),
+};
+
 export {
   register,
   login,
@@ -158,5 +180,8 @@ export {
   registerWithPasswordAndSendOTP,
   verifyRegistrationOTP,
   completeRegistrationWithProfile,
+  sendForgotPasswordOTP,
+  verifyForgotPasswordOTP,
+  resetPasswordWithVerifiedOTP,
   guestLogin,
 };

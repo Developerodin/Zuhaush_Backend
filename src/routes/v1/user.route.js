@@ -6,6 +6,7 @@ import * as userController from '../../controllers/user.controller.js';
 
 const router = express.Router();
 
+// Basic CRUD routes (Admin only)
 router
   .route('/')
   .post(auth('manageUsers'), validate(userValidation.createUser), userController.createUser)
@@ -17,18 +18,47 @@ router
   .patch(auth('manageUsers'), validate(userValidation.updateUser), userController.updateUser)
   .delete(auth('manageUsers'), validate(userValidation.deleteUser), userController.deleteUser);
 
-// Profile routes
+// Authentication routes (Public)
+router.post('/login', validate(userValidation.login), userController.login);
+router.post('/register', validate(userValidation.register), userController.register);
+
+// OTP-based registration flow
+router.post('/register-with-otp', validate(userValidation.registerWithPasswordAndSendOTP), userController.registerWithOTP);
+router.post('/verify-registration-otp', validate(userValidation.verifyRegistrationOTP), userController.verifyRegistrationOTP);
+router.post('/complete-registration', validate(userValidation.completeRegistrationWithProfile), userController.completeRegistrationWithProfile);
+
+// OTP-based login flow
+router.post('/login-with-otp', validate(userValidation.loginWithPasswordAndSendOTP), userController.loginWithOTP);
+router.post('/complete-login-otp', validate(userValidation.completeLoginWithOTP), userController.completeLoginWithOTP);
+
+// Password reset flow
+router.post('/forgot-password', validate(userValidation.sendForgotPasswordOTP), userController.sendForgotPasswordOTP);
+router.post('/verify-forgot-password-otp', validate(userValidation.verifyForgotPasswordOTP), userController.verifyForgotPasswordOTP);
+router.post('/reset-password', validate(userValidation.resetPasswordWithVerifiedOTP), userController.resetPasswordWithOTP);
+
+// Profile routes (Authenticated users)
 router
   .route('/profile')
   .get(auth(), userController.getProfile)
-  .patch(auth(), userController.updateProfile);
+  .patch(auth(), validate(userValidation.updateProfile), userController.updateProfile);
 
 router
   .route('/preferences')
   .get(auth(), userController.getPreferences)
-  .post(auth(), userController.updatePreferences);
+  .patch(auth(), validate(userValidation.updatePreferences), userController.updatePreferences);
 
-  export default router;
+router.post('/change-password', auth(), validate(userValidation.changePassword), userController.changePassword);
+
+// OTP operations (Public)
+router.post('/send-otp', validate(userValidation.sendOTP), userController.sendOTP);
+router.post('/verify-otp', validate(userValidation.verifyOTP), userController.verifyOTP);
+
+// Admin operations
+router.patch('/:userId/deactivate', auth('manageUsers'), userController.deactivateUser);
+router.patch('/:userId/activate', auth('manageUsers'), userController.activateUser);
+router.get('/stats', auth('getUsers'), userController.getUserStats);
+
+export default router;
 
 /**
  * @swagger

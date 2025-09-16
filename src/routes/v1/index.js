@@ -1,7 +1,10 @@
 import express from 'express';
 import authRoute from './auth.route.js';
 import userRoute from './user.route.js';
-import cityRoute from './city.route.js';
+import builderRoute from './builder.route.js';
+import propertyRoute from './property.route.js';
+import adminRoute from './admin.route.js';
+
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -17,8 +20,16 @@ const defaultRoutes = [
     route: userRoute,
   },
   {
-    path: '/cities',
-    route: cityRoute,
+    path: '/builders',
+    route: builderRoute,
+  },
+  {
+    path: '/properties',
+    route: propertyRoute,
+  },
+  {
+    path: '/admins',
+    route: adminRoute,
   },
 ];
 

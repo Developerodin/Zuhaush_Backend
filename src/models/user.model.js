@@ -47,14 +47,14 @@ const userSchema = mongoose.Schema(
         }
       },
     },
-    city: {
+    cityofInterest: {
       type: String,
       required: false,
       trim: true,
     },
     role: {
       type: String,
-      enum: roles,
+
       default: 'user',
     },
     isEmailVerified: {
@@ -85,6 +85,52 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Profile image
+    image: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    // Registration status tracking
+    registrationStatus: {
+      type: String,
+      enum: ['partial', 'otp_verified', 'completed'],
+      default: 'partial',
+    },
+    // OTP verification fields
+    otpCode: {
+      type: String,
+      required: false,
+      trim: true,
+      private: true, // used by the toJSON plugin
+    },
+    otpExpiry: {
+      type: Date,
+      required: false,
+    },
+    isOtpVerified: {
+      type: Boolean,
+      default: false,
+    },
+    // User permissions
+    permissions: [{
+      newProperties: {
+        type: Boolean,
+        default: true,
+      },
+      visitConfirmation: {
+        type: Boolean,
+        default: true,
+      },
+      visitReminder: {
+        type: Boolean,
+        default: true,
+      },
+      releaseMessages: {
+        type: Boolean,
+        default: true,
+      },
+    }],
   },
   {
     timestamps: true,
@@ -116,11 +162,53 @@ userSchema.methods.isPasswordMatch = async function (password) {
   return bcrypt.compare(password, user.password);
 };
 
+/**
+ * Check if OTP is valid and not expired
+ * @param {string} otpCode
+ * @returns {boolean}
+ */
+userSchema.methods.isOtpValid = function (otpCode) {
+  const user = this;
+  return user.otpCode === otpCode && user.otpExpiry && user.otpExpiry > new Date();
+};
+
+/**
+ * Check if user registration is complete
+ * @returns {boolean}
+ */
+userSchema.methods.isRegistrationComplete = function () {
+  const user = this;
+  return user.registrationStatus === 'completed' && 
+         user.name && 
+         user.contactNumber && 
+         user.cityofInterest;
+};
+
+/**
+ * Check if user needs to complete registration details
+ * @returns {boolean}
+ */
+userSchema.methods.needsToCompleteRegistration = function () {
+  const user = this;
+  return user.registrationStatus === 'otp_verified' && 
+         (!user.name || !user.contactNumber || !user.cityofInterest);
+};
+
 userSchema.pre('save', async function (next) {
   const user = this;
   if (user.isModified('password')) {
     user.password = await bcrypt.hash(user.password, 8);
   }
+  
+  // Update registration status based on completed fields
+  if (user.isModified(['name', 'contactNumber', 'cityofInterest', 'isOtpVerified'])) {
+    if (user.isOtpVerified && user.name && user.contactNumber && user.cityofInterest) {
+      user.registrationStatus = 'completed';
+    } else if (user.isOtpVerified) {
+      user.registrationStatus = 'otp_verified';
+    }
+  }
+  
   next();
 });
 

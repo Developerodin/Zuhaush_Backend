@@ -2,6 +2,9 @@ export * as authService from './auth.service.js';
 export * as emailService from './email.service.js';
 export * as tokenService from './token.service.js';
 export * as userService from './user.service.js';
+export * as builderService from './builder.service.js';
+export * as propertyService from './property.service.js';
 export * as otpService from './otp.service.js';
-export * as cityService from './city.service.js';
+export * as adminService from './admin.service.js';
+
 

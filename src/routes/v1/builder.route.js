@@ -1,5 +1,6 @@
 import express from 'express';
 import auth from '../../middlewares/auth.js';
+import flexibleAuth from '../../middlewares/flexibleAuth.js';
 import validate from '../../middlewares/validate.js';
 import * as builderValidation from '../../validations/builder.validation.js';
 import * as builderController from '../../controllers/builder.controller.js';
@@ -9,14 +10,14 @@ const router = express.Router();
 // Basic CRUD routes (Admin only)
 router
   .route('/')
-  .post(auth('manageBuilders'), validate(builderValidation.createBuilder), builderController.createBuilder)
-  .get(auth('getBuilders'), validate(builderValidation.getBuilders), builderController.getBuilders);
+  .post(flexibleAuth('manageBuilders'), validate(builderValidation.createBuilder), builderController.createBuilder)
+  .get(flexibleAuth('getBuilders'), validate(builderValidation.getBuilders), builderController.getBuilders);
 
 router
   .route('/:builderId')
-  .get(auth('getBuilders'), validate(builderValidation.getBuilder), builderController.getBuilder)
-  .patch(auth('manageBuilders'), validate(builderValidation.updateBuilder), builderController.updateBuilder)
-  .delete(auth('manageBuilders'), validate(builderValidation.deleteBuilder), builderController.deleteBuilder);
+  .get(flexibleAuth('getBuilders'), validate(builderValidation.getBuilder), builderController.getBuilder)
+  .patch(flexibleAuth('manageBuilders'), validate(builderValidation.updateBuilder), builderController.updateBuilder)
+  .delete(flexibleAuth('manageBuilders'), validate(builderValidation.deleteBuilder), builderController.deleteBuilder);
 
 // Authentication routes (Public)
 router.post('/login', validate(builderValidation.login), builderController.login);
@@ -39,38 +40,38 @@ router.post('/reset-password', validate(builderValidation.resetPasswordWithVerif
 // Profile routes (Authenticated builders)
 router
   .route('/profile')
-  .get(auth(), builderController.getProfile)
-  .patch(auth(), validate(builderValidation.updateProfile), builderController.updateProfile);
+  .get(flexibleAuth(), builderController.getProfile)
+  .patch(flexibleAuth(), validate(builderValidation.updateProfile), builderController.updateProfile);
 
-router.post('/change-password', auth(), validate(builderValidation.changePassword), builderController.changePassword);
+router.post('/change-password', flexibleAuth(), validate(builderValidation.changePassword), builderController.changePassword);
 
 // Builder status management (Authenticated builders)
-router.post('/submit-for-review', auth(), builderController.submitForReview);
-router.post('/reset-to-draft', auth(), builderController.resetToDraft);
+router.post('/submit-for-review', flexibleAuth(), builderController.submitForReview);
+router.post('/reset-to-draft', flexibleAuth(), builderController.resetToDraft);
 
 // Admin operations for builder approval
-router.patch('/:builderId/approve', auth('manageBuilders'), validate(builderValidation.approveBuilder), builderController.approveBuilder);
-router.patch('/:builderId/reject', auth('manageBuilders'), validate(builderValidation.rejectBuilder), builderController.rejectBuilder);
+router.patch('/:builderId/approve', flexibleAuth('manageBuilders'), validate(builderValidation.approveBuilder), builderController.approveBuilder);
+router.patch('/:builderId/reject', flexibleAuth('manageBuilders'), validate(builderValidation.rejectBuilder), builderController.rejectBuilder);
 
 // Team member management (Authenticated builders)
 router
   .route('/team-members')
-  .post(auth(), validate(builderValidation.addTeamMember), builderController.addTeamMember)
-  .get(auth(), builderController.getTeamMembers);
+  .post(flexibleAuth(), validate(builderValidation.addTeamMember), builderController.addTeamMember)
+  .get(flexibleAuth(), builderController.getTeamMembers);
 
 router
   .route('/team-members/:memberId')
-  .get(auth(), validate(builderValidation.getTeamMember), builderController.getTeamMember)
-  .patch(auth(), validate(builderValidation.updateTeamMember), builderController.updateTeamMember)
-  .delete(auth(), validate(builderValidation.removeTeamMember), builderController.removeTeamMember);
+  .get(flexibleAuth(), validate(builderValidation.getTeamMember), builderController.getTeamMember)
+  .patch(flexibleAuth(), validate(builderValidation.updateTeamMember), builderController.updateTeamMember)
+  .delete(flexibleAuth(), validate(builderValidation.removeTeamMember), builderController.removeTeamMember);
 
 // Team member authentication (Public)
 router.post('/team-members/login', validate(builderValidation.teamMemberLogin), builderController.teamMemberLogin);
 
 // Admin operations
-router.patch('/:builderId/deactivate', auth('manageBuilders'), builderController.deactivateBuilder);
-router.patch('/:builderId/activate', auth('manageBuilders'), builderController.activateBuilder);
-router.get('/stats', auth('getBuilders'), builderController.getBuilderStats);
+router.patch('/:builderId/deactivate', flexibleAuth('manageBuilders'), builderController.deactivateBuilder);
+router.patch('/:builderId/activate', flexibleAuth('manageBuilders'), builderController.activateBuilder);
+router.get('/stats', flexibleAuth('getBuilders'), builderController.getBuilderStats);
 
 // OTP operations (Public)
 router.post('/send-otp', validate(builderValidation.sendOTP), builderController.sendOTP);

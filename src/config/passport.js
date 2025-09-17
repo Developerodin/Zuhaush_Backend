@@ -2,6 +2,7 @@ import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
 import config from './config.js';
 import { tokenTypes } from './tokens.js';
 import User from '../models/user.model.js';
+import Admin from '../models/admin.model.js';
 
 
 const jwtOptions = {
@@ -24,6 +25,22 @@ const jwtVerify = async (payload, done) => {
   }
 };
 
-const jwtStrategy = new JwtStrategy(jwtOptions, jwtVerify);
+const adminJwtVerify = async (payload, done) => {
+  try {
+    if (payload.type !== tokenTypes.ACCESS) {
+      throw new Error('Invalid token type');
+    }
+    const admin = await Admin.findById(payload.sub);
+    if (!admin) {
+      return done(null, false);
+    }
+    done(null, admin);
+  } catch (error) {
+    done(error, false);
+  }
+};
 
-export { jwtStrategy };
+const jwtStrategy = new JwtStrategy(jwtOptions, jwtVerify);
+const adminJwtStrategy = new JwtStrategy(jwtOptions, adminJwtVerify);
+
+export { jwtStrategy, adminJwtStrategy };

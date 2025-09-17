@@ -1,5 +1,5 @@
 import express from 'express';
-import auth from '../../middlewares/auth.js';
+import adminAuth from '../../middlewares/adminAuth.js';
 import validate from '../../middlewares/validate.js';
 import * as adminValidation from '../../validations/admin.validation.js';
 import * as adminController from '../../controllers/admin.controller.js';
@@ -10,7 +10,7 @@ const router = express.Router();
 router.post('/login', validate(adminValidation.login), adminController.login);
 
 // Protected routes (authentication required)
-router.use(auth());
+router.use(adminAuth());
 
 // Basic CRUD operations
 router

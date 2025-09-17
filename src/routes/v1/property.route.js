@@ -1,12 +1,11 @@
 import express from 'express';
-import auth from '../../middlewares/auth.js';
+import flexibleAuth from '../../middlewares/flexibleAuth.js';
 import validate from '../../middlewares/validate.js';
-import { uploadSingle, getFileUrl } from '../../middlewares/upload.js';
+import { uploadSingle } from '../../middlewares/upload.js';
 import {
   createProperty,
   getProperties,
   getProperty,
-  getPropertyBySlug,
   updateProperty,
   deleteProperty,
   uploadMedia,
@@ -47,7 +46,6 @@ import {
   getPropertiesByType,
   getPropertiesByCity,
 } from '../../controllers/property.controller.js';
-import { roles } from '../../config/roles.js';
 
 const router = express.Router();
 
@@ -64,7 +62,7 @@ router.get('/:propertyId', validate(getProperty), getPropertyHandler);
 router.get('/', validate(getProperties), getPropertiesHandler);
 
 // Protected routes (require authentication)
-router.use(auth());
+router.use(flexibleAuth());
 
 // Builder routes
 router.post('/', validate(createProperty), createPropertyHandler);
@@ -87,7 +85,7 @@ router.post('/:propertyId/views', validate(incrementViews), incrementViewsHandle
 router.post('/:propertyId/inquiries', validate(incrementInquiries), incrementInquiriesHandler);
 
 // Admin routes
-router.use(auth(roles.ADMIN));
+router.use(flexibleAuth());
 
 router.post('/:propertyId/approve', validate(approveProperty), approvePropertyHandler);
 router.post('/:propertyId/reject', validate(rejectProperty), rejectPropertyHandler);

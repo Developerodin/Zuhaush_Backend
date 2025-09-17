@@ -1,5 +1,5 @@
 import express from 'express';
-import auth from '../../middlewares/auth.js';
+import flexibleAuth from '../../middlewares/flexibleAuth.js';
 import validate from '../../middlewares/validate.js';
 import * as userValidation from '../../validations/user.validation.js';
 import * as userController from '../../controllers/user.controller.js';
@@ -9,14 +9,14 @@ const router = express.Router();
 // Basic CRUD routes (Admin only)
 router
   .route('/')
-  .post(auth('manageUsers'), validate(userValidation.createUser), userController.createUser)
-  .get(auth('getUsers'), validate(userValidation.getUsers), userController.getUsers);
+  .post(flexibleAuth('manageUsers'), validate(userValidation.createUser), userController.createUser)
+  .get(flexibleAuth('getUsers'), validate(userValidation.getUsers), userController.getUsers);
 
 router
   .route('/:userId')
-  .get(auth('getUsers'), validate(userValidation.getUser), userController.getUser)
-  .patch(auth('manageUsers'), validate(userValidation.updateUser), userController.updateUser)
-  .delete(auth('manageUsers'), validate(userValidation.deleteUser), userController.deleteUser);
+  .get(flexibleAuth('getUsers'), validate(userValidation.getUser), userController.getUser)
+  .patch(flexibleAuth('manageUsers'), validate(userValidation.updateUser), userController.updateUser)
+  .delete(flexibleAuth('manageUsers'), validate(userValidation.deleteUser), userController.deleteUser);
 
 // Authentication routes (Public)
 router.post('/login', validate(userValidation.login), userController.login);
@@ -39,24 +39,24 @@ router.post('/reset-password', validate(userValidation.resetPasswordWithVerified
 // Profile routes (Authenticated users)
 router
   .route('/profile')
-  .get(auth(), userController.getProfile)
-  .patch(auth(), validate(userValidation.updateProfile), userController.updateProfile);
+  .get(flexibleAuth(), userController.getProfile)
+  .patch(flexibleAuth(), validate(userValidation.updateProfile), userController.updateProfile);
 
 router
   .route('/preferences')
-  .get(auth(), userController.getPreferences)
-  .patch(auth(), validate(userValidation.updatePreferences), userController.updatePreferences);
+  .get(flexibleAuth(), userController.getPreferences)
+  .patch(flexibleAuth(), validate(userValidation.updatePreferences), userController.updatePreferences);
 
-router.post('/change-password', auth(), validate(userValidation.changePassword), userController.changePassword);
+router.post('/change-password', flexibleAuth(), validate(userValidation.changePassword), userController.changePassword);
 
 // OTP operations (Public)
 router.post('/send-otp', validate(userValidation.sendOTP), userController.sendOTP);
 router.post('/verify-otp', validate(userValidation.verifyOTP), userController.verifyOTP);
 
 // Admin operations
-router.patch('/:userId/deactivate', auth('manageUsers'), userController.deactivateUser);
-router.patch('/:userId/activate', auth('manageUsers'), userController.activateUser);
-router.get('/stats', auth('getUsers'), userController.getUserStats);
+router.patch('/:userId/deactivate', flexibleAuth('manageUsers'), userController.deactivateUser);
+router.patch('/:userId/activate', flexibleAuth('manageUsers'), userController.activateUser);
+router.get('/stats', flexibleAuth('getUsers'), userController.getUserStats);
 
 export default router;
 

@@ -113,7 +113,7 @@ const userSchema = mongoose.Schema(
       default: false,
     },
     // User permissions
-    permissions: [{
+    permissions: {
       newProperties: {
         type: Boolean,
         default: true,
@@ -130,7 +130,7 @@ const userSchema = mongoose.Schema(
         type: Boolean,
         default: true,
       },
-    }],
+    },
   },
   {
     timestamps: true,

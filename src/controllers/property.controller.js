@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import pick from '../utils/pick.js';
 import ApiError from '../utils/ApiError.js';
 import catchAsync from '../utils/catchAsync.js';
-import { getFileUrl } from '../middlewares/upload.js';
+import { deleteUploadedFile } from '../middlewares/upload.js';
 import {
   createProperty,
   queryProperties,
@@ -32,6 +32,10 @@ import {
  * @returns {Promise<Property>}
  */
 const createPropertyHandler = catchAsync(async (req, res) => {
+  // If user is authenticated and is a builder, set the builder field
+  if (req.user && req.user.constructor.modelName === 'Builder') {
+    req.body.builder = req.user.id;
+  }
   const property = await createProperty(req.body);
   res.status(httpStatus.CREATED).send(property);
 });
@@ -98,6 +102,21 @@ const getPropertyBySlugHandler = catchAsync(async (req, res) => {
  * @returns {Promise<Property>}
  */
 const updateProperty = catchAsync(async (req, res) => {
+  if (req.user && req.user.constructor.modelName === 'Builder') {
+    const property = await getPropertyById(req.params.propertyId);
+    if (!property) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
+    }
+    
+    // Check if the builder owns this property
+    // property.builder might be populated (object) or just an ID (string)
+    const propertyBuilderId = property.builder._id ? property.builder._id.toString() : property.builder.toString();
+    
+    if (propertyBuilderId !== req.user.id) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'You can only update your own properties');
+    }
+  }
+  
   const property = await updatePropertyById(req.params.propertyId, req.body);
   res.send(property);
 });
@@ -109,6 +128,18 @@ const updateProperty = catchAsync(async (req, res) => {
  * @returns {Promise<void>}
  */
 const deleteProperty = catchAsync(async (req, res) => {
+  // Check if user is a builder and owns this property
+  if (req.user && req.user.constructor.modelName === 'Builder') {
+    const property = await getPropertyById(req.params.propertyId);
+    if (!property) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
+    }
+    const propertyBuilderId = property.builder._id ? property.builder._id.toString() : property.builder.toString();
+    if (propertyBuilderId !== req.user.id) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'You can only delete your own properties');
+    }
+  }
+  
   await deletePropertyById(req.params.propertyId);
   res.status(httpStatus.NO_CONTENT).send();
 });
@@ -120,15 +151,54 @@ const deleteProperty = catchAsync(async (req, res) => {
  * @returns {Promise<Property>}
  */
 const addMedia = catchAsync(async (req, res) => {
+  // Check if user is a builder and owns this property
+  if (req.user && req.user.constructor.modelName === 'Builder') {
+    const property = await getPropertyById(req.params.propertyId);
+    if (!property) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
+    }
+    const propertyBuilderId = property.builder._id ? property.builder._id.toString() : property.builder.toString();
+    if (propertyBuilderId !== req.user.id) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'You can only add media to your own properties');
+    }
+  }
+
   if (!req.file && !req.body.url) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'File or URL is required');
   }
 
+  // Validate media type against file type
+  if (req.file) {
+    const fileMimeType = req.file.mimetype;
+    const mediaType = req.body.type;
+    
+    const isValidCombination = () => {
+      switch (mediaType) {
+        case 'image':
+          return ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(fileMimeType);
+        case 'video':
+          return ['video/mp4', 'video/avi', 'video/mov', 'video/wmv'].includes(fileMimeType);
+        case 'document':
+        case 'brochure':
+          return ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(fileMimeType);
+        case 'floor_plan':
+          return ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(fileMimeType);
+        default:
+          return false;
+      }
+    };
+
+    if (!isValidCombination()) {
+      throw new ApiError(httpStatus.BAD_REQUEST, `File type ${fileMimeType} is not valid for media type ${mediaType}`);
+    }
+  }
+
   const mediaData = {
     type: req.body.type,
-    url: req.file ? getFileUrl(req, req.file.path) : req.body.url,
+    url: req.file ? req.file.url : req.body.url, // S3 URL is already set by upload middleware
     caption: req.body.caption,
     isPrimary: req.body.isPrimary || false,
+    urlKey: req.file ? req.file.s3.key : null, // Store S3 key for future deletion
   };
 
   const property = await addMediaToProperty(req.params.propertyId, mediaData);
@@ -142,6 +212,18 @@ const addMedia = catchAsync(async (req, res) => {
  * @returns {Promise<Property>}
  */
 const updateMedia = catchAsync(async (req, res) => {
+  // Check if user is a builder and owns this property
+  if (req.user && req.user.constructor.modelName === 'Builder') {
+    const property = await getPropertyById(req.params.propertyId);
+    if (!property) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
+    }
+    const propertyBuilderId = property.builder._id ? property.builder._id.toString() : property.builder.toString();
+    if (propertyBuilderId !== req.user.id) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'You can only update media for your own properties');
+    }
+  }
+
   const updateData = pick(req.body, ['caption', 'isPrimary']);
   const property = await updateMediaInProperty(req.params.propertyId, req.params.mediaId, updateData);
   res.send(property);
@@ -154,8 +236,39 @@ const updateMedia = catchAsync(async (req, res) => {
  * @returns {Promise<Property>}
  */
 const removeMedia = catchAsync(async (req, res) => {
-  const property = await removeMediaFromProperty(req.params.propertyId, req.params.mediaId);
-  res.send(property);
+  // Check if user is a builder and owns this property
+  if (req.user && req.user.constructor.modelName === 'Builder') {
+    const property = await getPropertyById(req.params.propertyId);
+    if (!property) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
+    }
+    const propertyBuilderId = property.builder._id ? property.builder._id.toString() : property.builder.toString();
+    if (propertyBuilderId !== req.user.id) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'You can only remove media from your own properties');
+    }
+  }
+
+  // Get the property to find the media item before deletion
+  const property = await getPropertyById(req.params.propertyId);
+  if (!property) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
+  }
+
+  // Find the media item to get its S3 key
+  const mediaItem = property.media.find((media) => media._id.toString() === req.params.mediaId);
+  if (mediaItem && mediaItem.urlKey) {
+    // Delete file from S3
+    try {
+      await deleteUploadedFile(mediaItem.urlKey);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error deleting file from S3:', error);
+      // Continue with media removal even if S3 deletion fails
+    }
+  }
+
+  const updatedProperty = await removeMediaFromProperty(req.params.propertyId, req.params.mediaId);
+  res.send(updatedProperty);
 });
 
 /**

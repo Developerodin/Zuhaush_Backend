@@ -3,6 +3,7 @@ import config from './config.js';
 import { tokenTypes } from './tokens.js';
 import User from '../models/user.model.js';
 import Admin from '../models/admin.model.js';
+import Builder from '../models/builder.model.js';
 
 
 const jwtOptions = {
@@ -40,7 +41,23 @@ const adminJwtVerify = async (payload, done) => {
   }
 };
 
+const builderJwtVerify = async (payload, done) => {
+  try {
+    if (payload.type !== tokenTypes.ACCESS) {
+      throw new Error('Invalid token type');
+    }
+    const builder = await Builder.findById(payload.sub);
+    if (!builder) {
+      return done(null, false);
+    }
+    done(null, builder);
+  } catch (error) {
+    done(error, false);
+  }
+};
+
 const jwtStrategy = new JwtStrategy(jwtOptions, jwtVerify);
 const adminJwtStrategy = new JwtStrategy(jwtOptions, adminJwtVerify);
+const builderJwtStrategy = new JwtStrategy(jwtOptions, builderJwtVerify);
 
-export { jwtStrategy, adminJwtStrategy };
+export { jwtStrategy, adminJwtStrategy, builderJwtStrategy };

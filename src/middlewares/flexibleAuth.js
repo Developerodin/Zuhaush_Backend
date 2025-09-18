@@ -38,23 +38,39 @@ const flexibleAuth = (...requiredRights) => async (req, res, next) => {
         return resolve();
       }
       
-      // If admin auth failed, try regular user auth (for builders)
-      passport.authenticate('jwt', { session: false }, (err, user, info) => {
-        if (err || info || !user) {
-          return reject(new ApiError(httpStatus.UNAUTHORIZED, 'Please authenticate'));
-        }
-        req.user = user;
-
-        if (requiredRights.length) {
-          // For builders, we'll use a more permissive approach
-          // If it's a builder token, allow access to builder-related operations
-          const userRights = roleRights.get('builder'); // Always use builder rights for builder tokens
-          const hasRequiredRights = requiredRights.every((requiredRight) => userRights.includes(requiredRight));
-          if (!hasRequiredRights && req.params.userId !== user.id) {
-            return reject(new ApiError(httpStatus.FORBIDDEN, 'Forbidden'));
+      // If admin auth failed, try builder authentication
+      passport.authenticate('builder-jwt', { session: false }, (err, builder, info) => {
+        if (builder) {
+          // Builder token found, use builder user
+          req.user = builder;
+          if (requiredRights.length) {
+            // Check builder permissions
+            const builderRights = roleRights.get('builder');
+            const hasRequiredRights = requiredRights.every((requiredRight) => builderRights.includes(requiredRight));
+            if (!hasRequiredRights && req.params.builderId !== builder.id) {
+              return reject(new ApiError(httpStatus.FORBIDDEN, 'Forbidden'));
+            }
           }
+          return resolve();
         }
-        resolve();
+        
+        // If builder auth failed, try regular user auth
+        passport.authenticate('jwt', { session: false }, (err, user, info) => {
+          if (err || info || !user) {
+            return reject(new ApiError(httpStatus.UNAUTHORIZED, 'Please authenticate'));
+          }
+          req.user = user;
+
+          if (requiredRights.length) {
+            // For regular users, check their permissions
+            const userRights = roleRights.get(user.role || 'user');
+            const hasRequiredRights = requiredRights.every((requiredRight) => userRights.includes(requiredRight));
+            if (!hasRequiredRights && req.params.userId !== user.id) {
+              return reject(new ApiError(httpStatus.FORBIDDEN, 'Forbidden'));
+            }
+          }
+          resolve();
+        })(req, res, next);
       })(req, res, next);
     })(req, res, next);
   })

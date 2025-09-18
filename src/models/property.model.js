@@ -103,6 +103,11 @@ const propertySchema = mongoose.Schema(
         required: true,
         trim: true,
       },
+      urlKey: {
+        type: String,
+        required: false,
+        trim: true,
+      },
       caption: {
         type: String,
         required: false,

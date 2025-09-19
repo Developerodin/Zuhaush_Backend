@@ -32,7 +32,54 @@ const createUser = async (userBody) => {
  * @returns {Promise<QueryResult>}
  */
 const queryUsers = async (filter, options) => {
-  const users = await User.paginate(filter, options);
+  // Convert search parameters to proper MongoDB queries
+  const mongoFilter = {};
+  
+  // Handle general text search across multiple fields
+  if (filter.q) {
+    mongoFilter.$or = [
+      { name: { $regex: filter.q, $options: 'i' } },
+      { email: { $regex: filter.q, $options: 'i' } },
+      { contactNumber: { $regex: filter.q, $options: 'i' } },
+      { cityofInterest: { $regex: filter.q, $options: 'i' } }
+    ];
+  } else {
+    // Handle specific field searches - use OR logic when multiple fields are provided
+    const searchFields = [];
+    if (filter.name) searchFields.push({ name: { $regex: filter.name, $options: 'i' } });
+    if (filter.email) searchFields.push({ email: { $regex: filter.email, $options: 'i' } });
+    if (filter.contactNumber) searchFields.push({ contactNumber: { $regex: filter.contactNumber, $options: 'i' } });
+    if (filter.cityofInterest) searchFields.push({ cityofInterest: { $regex: filter.cityofInterest, $options: 'i' } });
+    
+    if (searchFields.length > 0) {
+      if (searchFields.length === 1) {
+        // Single field search - use direct filter
+        Object.assign(mongoFilter, searchFields[0]);
+      } else {
+        // Multiple field search - use OR logic (find users matching ANY of the search terms)
+        mongoFilter.$or = searchFields;
+      }
+    }
+  }
+  
+  // Handle exact matches for role, accountType, isActive, isEmailVerified, registrationStatus
+  if (filter.role) {
+    mongoFilter.role = filter.role;
+  }
+  if (filter.accountType) {
+    mongoFilter.accountType = filter.accountType;
+  }
+  if (filter.isActive !== undefined) {
+    mongoFilter.isActive = filter.isActive === 'true' || filter.isActive === true;
+  }
+  if (filter.isEmailVerified !== undefined) {
+    mongoFilter.isEmailVerified = filter.isEmailVerified === 'true' || filter.isEmailVerified === true;
+  }
+  if (filter.registrationStatus) {
+    mongoFilter.registrationStatus = filter.registrationStatus;
+  }
+  
+  const users = await User.paginate(mongoFilter, options);
   return users;
 };
 

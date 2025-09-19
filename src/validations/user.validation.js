@@ -25,11 +25,15 @@ const createUser = {
 const getUsers = {
   query: Joi.object().keys({
     name: Joi.string(),
+    email: Joi.string(),
+    contactNumber: Joi.string(),
+    cityofInterest: Joi.string(),
     role: Joi.string(),
     accountType: Joi.string().valid('registered', 'guest'),
     isActive: Joi.boolean(),
     isEmailVerified: Joi.boolean(),
     registrationStatus: Joi.string().valid('partial', 'otp_verified', 'completed'),
+    q: Joi.string(), // General search parameter
     sortBy: Joi.string(),
     limit: Joi.number().integer().min(1).max(100).default(10),
     page: Joi.number().integer().min(1).default(1),

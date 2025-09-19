@@ -17,7 +17,15 @@ const createBuilder = {
     website: Joi.string().optional().uri(),
     logo: Joi.string().optional(),
     logoName: Joi.string().optional(),
-    supportingDocuments: Joi.array().items(Joi.string()).optional(),
+    supportingDocuments: Joi.array().items(
+      Joi.object().keys({
+        url: Joi.string().optional(),
+        urlKey: Joi.string().optional(),
+        originalName: Joi.string().optional(),
+        documentType: Joi.string().valid('license', 'certificate', 'registration', 'contract', 'other').optional(),
+        uploadedAt: Joi.date().optional(),
+      })
+    ).optional(),
   }),
 };
 
@@ -60,7 +68,15 @@ const updateBuilder = {
       website: Joi.string().uri(),
       logo: Joi.string(),
       logoName: Joi.string(),
-      supportingDocuments: Joi.array().items(Joi.string()),
+      supportingDocuments: Joi.array().items(
+      Joi.object().keys({
+        url: Joi.string().optional(),
+        urlKey: Joi.string().optional(),
+        originalName: Joi.string().optional(),
+        documentType: Joi.string().valid('license', 'certificate', 'registration', 'contract', 'other').optional(),
+        uploadedAt: Joi.date().optional(),
+      })
+    ),
       status: Joi.string().valid('draft', 'submitted', 'approved', 'rejected'),
       isActive: Joi.boolean(),
     })
@@ -96,7 +112,15 @@ const register = {
     website: Joi.string().optional().uri(),
     logo: Joi.string().optional(),
     logoName: Joi.string().optional(),
-    supportingDocuments: Joi.array().items(Joi.string()).optional(),
+    supportingDocuments: Joi.array().items(
+      Joi.object().keys({
+        url: Joi.string().optional(),
+        urlKey: Joi.string().optional(),
+        originalName: Joi.string().optional(),
+        documentType: Joi.string().valid('license', 'certificate', 'registration', 'contract', 'other').optional(),
+        uploadedAt: Joi.date().optional(),
+      })
+    ).optional(),
   }),
 };
 
@@ -145,7 +169,15 @@ const completeRegistrationWithProfile = {
     website: Joi.string().optional().uri(),
     logo: Joi.string().optional(),
     logoName: Joi.string().optional(),
-    supportingDocuments: Joi.array().items(Joi.string()).optional(),
+    supportingDocuments: Joi.array().items(
+      Joi.object().keys({
+        url: Joi.string().optional(),
+        urlKey: Joi.string().optional(),
+        originalName: Joi.string().optional(),
+        documentType: Joi.string().valid('license', 'certificate', 'registration', 'contract', 'other').optional(),
+        uploadedAt: Joi.date().optional(),
+      })
+    ).optional(),
   }),
 };
 
@@ -200,7 +232,15 @@ const updateProfile = {
     website: Joi.string().optional().uri(),
     logo: Joi.string().optional(),
     logoName: Joi.string().optional(),
-    supportingDocuments: Joi.array().items(Joi.string()).optional(),
+    supportingDocuments: Joi.array().items(
+      Joi.object().keys({
+        url: Joi.string().optional(),
+        urlKey: Joi.string().optional(),
+        originalName: Joi.string().optional(),
+        documentType: Joi.string().valid('license', 'certificate', 'registration', 'contract', 'other').optional(),
+        uploadedAt: Joi.date().optional(),
+      })
+    ).optional(),
   }).min(1),
 };
 
@@ -289,6 +329,36 @@ const rejectBuilder = {
   }),
 };
 
+// Document upload validations
+const uploadSingleDocument = {
+  params: Joi.object().keys({
+    builderId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object().keys({
+    documentType: Joi.string().valid('license', 'certificate', 'registration', 'contract', 'other').optional(),
+  }),
+};
+
+const uploadMultipleDocuments = {
+  params: Joi.object().keys({
+    builderId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object().keys({
+    documentType: Joi.string().valid('license', 'certificate', 'registration', 'contract', 'other').optional(),
+  }),
+};
+
+const uploadDocumentFields = {
+  params: Joi.object().keys({
+    builderId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object().keys({
+    licenseType: Joi.string().valid('license', 'certificate', 'registration', 'contract', 'other').optional(),
+    certificateType: Joi.string().valid('license', 'certificate', 'registration', 'contract', 'other').optional(),
+    registrationType: Joi.string().valid('license', 'certificate', 'registration', 'contract', 'other').optional(),
+  }),
+};
+
 export { 
   createBuilder, 
   getBuilders, 
@@ -316,5 +386,8 @@ export {
   teamMemberLogin,
   approveBuilder,
   rejectBuilder,
+  uploadSingleDocument,
+  uploadMultipleDocuments,
+  uploadDocumentFields,
 };
 

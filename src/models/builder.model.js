@@ -120,8 +120,31 @@ const builderSchema = mongoose.Schema(
     
     // Supporting documents
     supportingDocuments: [{
-      type: String,
-      required: false,
+      url: {
+        type: String,
+        required: false,
+        trim: true,
+      },
+      urlKey: {
+        type: String,
+        required: false,
+        trim: true,
+      },
+      originalName: {
+        type: String,
+        required: false,
+        trim: true,
+      },
+      documentType: {
+        type: String,
+        required: false,
+        enum: ['license', 'certificate', 'registration', 'contract', 'other'],
+        default: 'other',
+      },
+      uploadedAt: {
+        type: Date,
+        default: Date.now,
+      },
     }],
     
     // Status management

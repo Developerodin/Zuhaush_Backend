@@ -1,7 +1,7 @@
 import express from 'express';
-import auth from '../../middlewares/auth.js';
 import flexibleAuth from '../../middlewares/flexibleAuth.js';
 import validate from '../../middlewares/validate.js';
+import { uploadSingleDocument, uploadMultipleDocuments, uploadDocumentFields } from '../../middlewares/builderUpload.js';
 import * as builderValidation from '../../validations/builder.validation.js';
 import * as builderController from '../../controllers/builder.controller.js';
 
@@ -72,6 +72,49 @@ router.post('/team-members/login', validate(builderValidation.teamMemberLogin), 
 router.patch('/:builderId/deactivate', flexibleAuth('manageBuilders'), builderController.deactivateBuilder);
 router.patch('/:builderId/activate', flexibleAuth('manageBuilders'), builderController.activateBuilder);
 router.get('/stats', flexibleAuth('getBuilders'), builderController.getBuilderStats);
+
+// Document upload routes (Authenticated builders and admins)
+router
+  .route('/:builderId/documents')
+  .get(
+    flexibleAuth('getBuilders'), 
+    builderController.getBuilderDocuments
+  )
+  .post(
+    flexibleAuth('manageBuilders'), 
+    uploadSingleDocument('document'), 
+    validate(builderValidation.uploadSingleDocument), 
+    builderController.uploadSingleDocument
+  );
+
+router
+  .route('/:builderId/documents/multiple')
+  .post(
+    flexibleAuth('manageBuilders'), 
+    uploadMultipleDocuments('documents', 5), 
+    validate(builderValidation.uploadMultipleDocuments), 
+    builderController.uploadMultipleDocuments
+  );
+
+router
+  .route('/:builderId/documents/fields')
+  .post(
+    flexibleAuth('manageBuilders'), 
+    uploadDocumentFields([
+      { name: 'license', maxCount: 3 },
+      { name: 'certificate', maxCount: 3 },
+      { name: 'registration', maxCount: 3 }
+    ]), 
+    validate(builderValidation.uploadDocumentFields), 
+    builderController.uploadDocumentFields
+  );
+
+router
+  .route('/:builderId/documents/:documentId')
+  .delete(
+    flexibleAuth('manageBuilders'), 
+    builderController.removeDocument
+  );
 
 // OTP operations (Public)
 router.post('/send-otp', validate(builderValidation.sendOTP), builderController.sendOTP);

@@ -2,6 +2,7 @@ import httpStatus from 'http-status';
 import pick from '../utils/pick.js';
 import ApiError from '../utils/ApiError.js';
 import catchAsync from '../utils/catchAsync.js';
+import { deleteUploadedDocument } from '../middlewares/builderUpload.js';
 import * as builderService from '../services/builder.service.js';
 
 // Basic CRUD operations
@@ -216,6 +217,151 @@ const verifyOTP = catchAsync(async (req, res) => {
   res.send(result);
 });
 
+// Document upload operations
+const uploadSingleDocument = catchAsync(async (req, res) => {
+  if (!req.file) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Document file is required');
+  }
+
+  const documentData = {
+    url: req.file.url || null,
+    urlKey: req.file.document?.key || null,
+    originalName: req.file.document?.originalName || req.file.originalname || null,
+    documentType: req.file.document?.documentType || 'other',
+  };
+
+  // Use direct MongoDB update for $push operations
+  const builder = await builderService.getBuilderById(req.params.builderId);
+  if (!builder) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found');
+  }
+  
+  builder.supportingDocuments.push(documentData);
+  await builder.save();
+
+  res.status(httpStatus.CREATED).send({
+    message: 'Document uploaded successfully',
+    document: documentData,
+    builder
+  });
+});
+
+const uploadMultipleDocuments = catchAsync(async (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'At least one document file is required');
+  }
+
+  const documentsData = req.files.map(file => ({
+    url: file.url || null,
+    urlKey: file.document?.key || null,
+    originalName: file.document?.originalName || file.originalname || null,
+    documentType: file.document?.documentType || 'other',
+  }));
+
+  // Use direct MongoDB update for $push operations
+  const builder = await builderService.getBuilderById(req.params.builderId);
+  if (!builder) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found');
+  }
+  
+  builder.supportingDocuments.push(...documentsData);
+  await builder.save();
+
+  res.status(httpStatus.CREATED).send({
+    message: 'Documents uploaded successfully',
+    documents: documentsData,
+    builder
+  });
+});
+
+const uploadDocumentFields = catchAsync(async (req, res) => {
+  if (!req.files) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'At least one document file is required');
+  }
+
+  const documentsData = [];
+  
+  // Process each field type
+  Object.keys(req.files).forEach(fieldName => {
+    const files = req.files[fieldName];
+    const documentType = req.body[`${fieldName}Type`] || fieldName;
+    
+    files.forEach(file => {
+      documentsData.push({
+        url: file.url || null,
+        urlKey: file.document?.key || null,
+        originalName: file.document?.originalName || file.originalname || null,
+        documentType: documentType,
+      });
+    });
+  });
+
+  // Use direct MongoDB update for $push operations
+  const builder = await builderService.getBuilderById(req.params.builderId);
+  if (!builder) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found');
+  }
+  
+  builder.supportingDocuments.push(...documentsData);
+  await builder.save();
+
+  res.status(httpStatus.CREATED).send({
+    message: 'Documents uploaded successfully',
+    documents: documentsData,
+    builder
+  });
+});
+
+const removeDocument = catchAsync(async (req, res) => {
+  const { builderId, documentId } = req.params;
+  
+  const builder = await builderService.getBuilderById(builderId);
+  if (!builder) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found');
+  }
+
+  // Find the document to get its S3 key
+  const document = builder.supportingDocuments.find(doc => doc._id.toString() === documentId);
+  if (!document) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Document not found');
+  }
+
+  // Delete file from S3
+  if (document.urlKey) {
+    try {
+      await deleteUploadedDocument(document.urlKey);
+    } catch (error) {
+      console.error('Error deleting document from S3:', error);
+      // Continue with document removal even if S3 deletion fails
+    }
+  }
+
+  // Remove document from builder
+  await builderService.updateBuilderById(builderId, {
+    $pull: { supportingDocuments: { _id: documentId } }
+  });
+
+  res.send({
+    message: 'Document removed successfully',
+    removedDocument: document
+  });
+});
+
+// Get builder documents
+const getBuilderDocuments = catchAsync(async (req, res) => {
+  const { builderId } = req.params;
+  
+  const builder = await builderService.getBuilderById(builderId);
+  if (!builder) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found');
+  }
+
+  res.send({
+    builderId: builder._id,
+    documents: builder.supportingDocuments || []
+  });
+});
+
 export {
   // Basic CRUD
   createBuilder,
@@ -265,4 +411,11 @@ export {
   // OTP operations
   sendOTP,
   verifyOTP,
+  
+  // Document upload operations
+  uploadSingleDocument,
+  uploadMultipleDocuments,
+  uploadDocumentFields,
+  removeDocument,
+  getBuilderDocuments,
 };

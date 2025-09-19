@@ -32,7 +32,48 @@ const createBuilder = async (builderBody) => {
  * @returns {Promise<QueryResult>}
  */
 const queryBuilders = async (filter, options) => {
-  const builders = await Builder.paginate(filter, options);
+  // Convert search parameters to proper MongoDB queries
+  const mongoFilter = {};
+  
+  
+  // Handle general text search across multiple fields
+  if (filter.q) {
+    mongoFilter.$or = [
+      { name: { $regex: filter.q, $options: 'i' } },
+      { email: { $regex: filter.q, $options: 'i' } },
+      { company: { $regex: filter.q, $options: 'i' } },
+      { city: { $regex: filter.q, $options: 'i' } },
+      { contactPerson: { $regex: filter.q, $options: 'i' } },
+      { reraRegistrationId: { $regex: filter.q, $options: 'i' } }
+    ];
+  } else {
+    // Handle specific field searches - use OR logic when multiple fields are provided
+    const searchFields = [];
+    if (filter.name) searchFields.push({ name: { $regex: filter.name, $options: 'i' } });
+    if (filter.email) searchFields.push({ email: { $regex: filter.email, $options: 'i' } });
+    if (filter.company) searchFields.push({ company: { $regex: filter.company, $options: 'i' } });
+    if (filter.city) searchFields.push({ city: { $regex: filter.city, $options: 'i' } });
+    
+    if (searchFields.length > 0) {
+      if (searchFields.length === 1) {
+        // Single field search - use direct filter
+        Object.assign(mongoFilter, searchFields[0]);
+      } else {
+        // Multiple field search - use OR logic (find builders matching ANY of the search terms)
+        mongoFilter.$or = searchFields;
+      }
+    }
+  }
+  
+  // Handle exact matches for status and isActive
+  if (filter.status) {
+    mongoFilter.status = filter.status;
+  }
+  if (filter.isActive !== undefined) {
+    mongoFilter.isActive = filter.isActive === 'true' || filter.isActive === true;
+  }
+  
+  const builders = await Builder.paginate(mongoFilter, options);
   return builders;
 };
 

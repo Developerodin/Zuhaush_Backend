@@ -12,8 +12,10 @@ const createBuilder = catchAsync(async (req, res) => {
 });
 
 const getBuilders = catchAsync(async (req, res) => {
-  const filter = pick(req.query, ['name', 'email', 'company', 'city', 'status', 'isActive']);
+  const filter = pick(req.query, ['name', 'email', 'company', 'city', 'status', 'isActive', 'q']);
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  
+  
   const result = await builderService.queryBuilders(filter, options);
   res.send(result);
 });

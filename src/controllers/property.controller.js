@@ -23,6 +23,10 @@ import {
   getNearbyProperties,
   getPropertiesByBuilder,
   getPropertyStats,
+  addToShortlist,
+  removeFromShortlist,
+  getShortlistedProperties,
+  checkShortlistStatus,
 } from '../services/property.service.js';
 
 /**
@@ -476,6 +480,57 @@ const getPropertiesByCity = catchAsync(async (req, res) => {
   res.send(result);
 });
 
+/**
+ * Add property to shortlist
+ * @param {Object} req
+ * @param {Object} res
+ * @returns {Promise<User>}
+ */
+const addToShortlistHandler = catchAsync(async (req, res) => {
+  const user = await addToShortlist(req.user.id, req.params.propertyId);
+  res.status(httpStatus.OK).send({
+    message: 'Property added to shortlist successfully',
+    shortlistedProperties: user.shortlistProperties,
+  });
+});
+
+/**
+ * Remove property from shortlist
+ * @param {Object} req
+ * @param {Object} res
+ * @returns {Promise<User>}
+ */
+const removeFromShortlistHandler = catchAsync(async (req, res) => {
+  const user = await removeFromShortlist(req.user.id, req.params.propertyId);
+  res.status(httpStatus.OK).send({
+    message: 'Property removed from shortlist successfully',
+    shortlistedProperties: user.shortlistProperties,
+  });
+});
+
+/**
+ * Get user's shortlisted properties
+ * @param {Object} req
+ * @param {Object} res
+ * @returns {Promise<QueryResult>}
+ */
+const getShortlistedPropertiesHandler = catchAsync(async (req, res) => {
+  const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  const result = await getShortlistedProperties(req.user.id, options);
+  res.send(result);
+});
+
+/**
+ * Check if property is in user's shortlist
+ * @param {Object} req
+ * @param {Object} res
+ * @returns {Promise<Object>}
+ */
+const checkShortlistStatusHandler = catchAsync(async (req, res) => {
+  const isShortlisted = await checkShortlistStatus(req.user.id, req.params.propertyId);
+  res.send({ isShortlisted });
+});
+
 export {
   createPropertyHandler,
   getProperties,
@@ -501,4 +556,8 @@ export {
   getNewLaunchProperties,
   getPropertiesByType,
   getPropertiesByCity,
+  addToShortlistHandler,
+  removeFromShortlistHandler,
+  getShortlistedPropertiesHandler,
+  checkShortlistStatusHandler,
 };

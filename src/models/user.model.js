@@ -131,6 +131,11 @@ const userSchema = mongoose.Schema(
         default: true,
       },
     },
+    // Shortlisted properties
+    shortlistProperties: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Property',
+    }],
   },
   {
     timestamps: true,
@@ -192,6 +197,42 @@ userSchema.methods.needsToCompleteRegistration = function () {
   const user = this;
   return user.registrationStatus === 'otp_verified' && 
          (!user.name || !user.contactNumber || !user.cityofInterest);
+};
+
+/**
+ * Add property to shortlist
+ * @param {string} propertyId - Property ID to add to shortlist
+ * @returns {Promise<User>}
+ */
+userSchema.methods.addToShortlist = function (propertyId) {
+  const user = this;
+  if (!user.shortlistProperties.includes(propertyId)) {
+    user.shortlistProperties.push(propertyId);
+  }
+  return user.save();
+};
+
+/**
+ * Remove property from shortlist
+ * @param {string} propertyId - Property ID to remove from shortlist
+ * @returns {Promise<User>}
+ */
+userSchema.methods.removeFromShortlist = function (propertyId) {
+  const user = this;
+  user.shortlistProperties = user.shortlistProperties.filter(
+    id => id.toString() !== propertyId.toString()
+  );
+  return user.save();
+};
+
+/**
+ * Check if property is in shortlist
+ * @param {string} propertyId - Property ID to check
+ * @returns {boolean}
+ */
+userSchema.methods.isPropertyShortlisted = function (propertyId) {
+  const user = this;
+  return user.shortlistProperties.some(id => id.toString() === propertyId.toString());
 };
 
 userSchema.pre('save', async function (next) {

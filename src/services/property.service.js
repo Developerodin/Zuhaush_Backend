@@ -1,4 +1,4 @@
-import { Property } from '../models/index.js';
+import { Property, User } from '../models/index.js';
 import ApiError from '../utils/ApiError.js';
 import httpStatus from 'http-status';
 import mongoose from 'mongoose';
@@ -438,6 +438,98 @@ const getPropertyStats = async (builderId) => {
   };
 };
 
+/**
+ * Add property to user's shortlist
+ * @param {ObjectId} userId
+ * @param {ObjectId} propertyId
+ * @returns {Promise<User>}
+ */
+const addToShortlist = async (userId, propertyId) => {
+  // Check if property exists
+  const property = await Property.findById(propertyId);
+  if (!property) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
+  }
+
+  // Check if user exists
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  // Check if property is already in shortlist
+  if (user.isPropertyShortlisted(propertyId)) {
+    throw new ApiError(httpStatus.CONFLICT, 'Property already in shortlist');
+  }
+
+  return user.addToShortlist(propertyId);
+};
+
+/**
+ * Remove property from user's shortlist
+ * @param {ObjectId} userId
+ * @param {ObjectId} propertyId
+ * @returns {Promise<User>}
+ */
+const removeFromShortlist = async (userId, propertyId) => {
+  // Check if user exists
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  // Check if property is in shortlist
+  if (!user.isPropertyShortlisted(propertyId)) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Property not found in shortlist');
+  }
+
+  return user.removeFromShortlist(propertyId);
+};
+
+/**
+ * Get user's shortlisted properties
+ * @param {ObjectId} userId
+ * @param {Object} options
+ * @returns {Promise<QueryResult>}
+ */
+const getShortlistedProperties = async (userId, options = {}) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  // For shortlist, show all properties regardless of status or admin approval
+  // Users should be able to see their shortlisted properties even if they're draft or not approved
+  const filter = {
+    _id: { $in: user.shortlistProperties },
+  };
+
+  const defaultOptions = {
+    sortBy: 'createdAt:desc',
+    limit: 10,
+    page: 1,
+    populate: 'builder',
+    ...options,
+  };
+
+  return Property.paginate(filter, defaultOptions);
+};
+
+/**
+ * Check if property is in user's shortlist
+ * @param {ObjectId} userId
+ * @param {ObjectId} propertyId
+ * @returns {Promise<boolean>}
+ */
+const checkShortlistStatus = async (userId, propertyId) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  return user.isPropertyShortlisted(propertyId);
+};
+
 export {
   createProperty,
   queryProperties,
@@ -458,4 +550,8 @@ export {
   getNearbyProperties,
   getPropertiesByBuilder,
   getPropertyStats,
+  addToShortlist,
+  removeFromShortlist,
+  getShortlistedProperties,
+  checkShortlistStatus,
 };

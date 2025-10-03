@@ -248,6 +248,32 @@ const getNearbyProperties = {
   }),
 };
 
+const addToShortlist = {
+  params: Joi.object().keys({
+    propertyId: Joi.string().required().custom(objectId),
+  }),
+};
+
+const removeFromShortlist = {
+  params: Joi.object().keys({
+    propertyId: Joi.string().required().custom(objectId),
+  }),
+};
+
+const getShortlistedProperties = {
+  query: Joi.object().keys({
+    sortBy: Joi.string().default('createdAt:desc'),
+    limit: Joi.number().integer().min(1).max(100).default(10),
+    page: Joi.number().integer().min(1).default(1),
+  }),
+};
+
+const checkShortlistStatus = {
+  params: Joi.object().keys({
+    propertyId: Joi.string().required().custom(objectId),
+  }),
+};
+
 export {
   createProperty,
   getProperties,
@@ -266,4 +292,8 @@ export {
   incrementInquiries,
   searchProperties,
   getNearbyProperties,
+  addToShortlist,
+  removeFromShortlist,
+  getShortlistedProperties,
+  checkShortlistStatus,
 };

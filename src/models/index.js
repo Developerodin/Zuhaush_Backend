@@ -5,6 +5,7 @@ import Admin from './admin.model.js';
 import Property from './property.model.js';
 import Like from './likes.model.js';
 import Comment from './comments.model.js';
+import Visit from './visit.model.js';
 
-export { Token, User, Builder, Admin, Property, Like, Comment };
+export { Token, User, Builder, Admin, Property, Like, Comment, Visit };
 

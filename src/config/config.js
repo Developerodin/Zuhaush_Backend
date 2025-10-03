@@ -74,6 +74,11 @@ const config = {
       bucket: process.env.AWS_BUCKET_NAME,
     },
   },
+  visit: {
+    defaultDuration: 30, // minutes
+    minDuration: 15, // minutes
+    maxDuration: 120, // minutes
+  },
 };
 
 export default config;

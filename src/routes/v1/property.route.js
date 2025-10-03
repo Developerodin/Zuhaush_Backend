@@ -19,6 +19,10 @@ import {
   incrementInquiries,
   searchProperties,
   getNearbyProperties,
+  addToShortlist,
+  removeFromShortlist,
+  getShortlistedProperties,
+  checkShortlistStatus,
 } from '../../validations/property.validation.js';
 import {
   createPropertyHandler,
@@ -45,6 +49,10 @@ import {
   getNewLaunchProperties,
   getPropertiesByType,
   getPropertiesByCity,
+  addToShortlistHandler,
+  removeFromShortlistHandler,
+  getShortlistedPropertiesHandler,
+  checkShortlistStatusHandler,
 } from '../../controllers/property.controller.js';
 
 const router = express.Router();
@@ -58,11 +66,19 @@ router.get('/type/:type', getPropertiesByType);
 router.get('/city/:city', getPropertiesByCity);
 router.get('/:propertyId/nearby', validate(getNearbyProperties), getNearbyPropertiesHandler);
 router.get('/slug/:slug', getPropertyBySlugHandler);
-router.get('/:propertyId', validate(getProperty), getPropertyHandler);
 router.get('/', validate(getProperties), getPropertiesHandler);
 
 // Protected routes (require authentication)
 router.use(flexibleAuth());
+
+// User shortlist routes - MUST be before /:propertyId route
+router.get('/shortlist', validate(getShortlistedProperties), getShortlistedPropertiesHandler);
+router.post('/:propertyId/shortlist', validate(addToShortlist), addToShortlistHandler);
+router.delete('/:propertyId/shortlist', validate(removeFromShortlist), removeFromShortlistHandler);
+router.get('/:propertyId/shortlist/status', validate(checkShortlistStatus), checkShortlistStatusHandler);
+
+// Get property by ID - MUST be after specific routes
+router.get('/:propertyId', validate(getProperty), getPropertyHandler);
 
 // Builder routes
 router.post('/', validate(createProperty), createPropertyHandler);

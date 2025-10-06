@@ -45,16 +45,20 @@ const createVisit = async (visitBody) => {
  * @returns {Promise<QueryResult>}
  */
 const queryVisits = async (filter, options) => {
-  const visits = await Visit.paginate(filter, {
-    ...options,
-    populate: [
-      { path: 'user', select: 'name email contactNumber' },
-      { path: 'property', select: 'name type city locality price area media' },
-      { path: 'cancelledBy', select: 'name email' },
-      { path: 'rescheduledBy', select: 'name email' },
-    ],
-  });
-  return visits;
+  const visits = await Visit.paginate(filter, options);
+  
+  // Manually populate the results
+  const populatedVisits = await Visit.populate(visits.results, [
+    { path: 'user', select: 'name email contactNumber' },
+    { path: 'property', select: 'name type city locality price area media' },
+    { path: 'cancelledBy', select: 'name email' },
+    { path: 'rescheduledBy', select: 'name email' },
+  ]);
+  
+  return {
+    ...visits,
+    results: populatedVisits
+  };
 };
 
 /**
@@ -348,6 +352,78 @@ const getVisitStats = async (userId) => {
   };
 };
 
+/**
+ * Get scheduled properties for a user
+ * @param {ObjectId} userId
+ * @param {Object} options
+ * @returns {Promise<QueryResult>}
+ */
+const getScheduledProperties = async (userId, options = {}) => {
+  // Get all visits for the user with scheduled status
+  const visits = await Visit.find({ 
+    user: userId,
+    status: { $in: ['scheduled', 'confirmed', 'rescheduled'] }
+  }).populate('property', 'name type city locality price area media builder status isActive');
+
+  // Extract unique properties from visits
+  const propertyMap = new Map();
+  visits.forEach(visit => {
+    if (visit.property && !propertyMap.has(visit.property._id.toString())) {
+      propertyMap.set(visit.property._id.toString(), {
+        ...visit.property.toObject(),
+        visitDetails: {
+          visitId: visit._id,
+          date: visit.date,
+          time: visit.time,
+          status: visit.status,
+          createdAt: visit.createdAt,
+          updatedAt: visit.updatedAt
+        }
+      });
+    }
+  });
+
+  const properties = Array.from(propertyMap.values());
+
+  // Apply pagination manually
+  const limit = options.limit && parseInt(options.limit, 10) > 0 ? parseInt(options.limit, 10) : 10;
+  const page = options.page && parseInt(options.page, 10) > 0 ? parseInt(options.page, 10) : 1;
+  const skip = (page - 1) * limit;
+
+  // Apply sorting
+  let sortedProperties = properties;
+  if (options.sortBy) {
+    const sortingCriteria = options.sortBy.split(',');
+    sortedProperties = properties.sort((a, b) => {
+      for (const criteria of sortingCriteria) {
+        const [key, order] = criteria.split(':');
+        const aVal = a[key];
+        const bVal = b[key];
+        
+        if (aVal < bVal) return order === 'desc' ? 1 : -1;
+        if (aVal > bVal) return order === 'desc' ? -1 : 1;
+      }
+      return 0;
+    });
+  } else {
+    // Default sort by visit date (most recent first)
+    sortedProperties = properties.sort((a, b) => new Date(b.visitDetails.date) - new Date(a.visitDetails.date));
+  }
+
+  // Apply pagination
+  const paginatedProperties = sortedProperties.slice(skip, skip + limit);
+  const totalResults = properties.length;
+  const totalPages = Math.ceil(totalResults / limit);
+
+  return {
+    results: paginatedProperties,
+    page,
+    limit,
+    totalPages,
+    totalResults,
+  };
+};
+
 export {
   createVisit,
   queryVisits,
@@ -364,4 +440,5 @@ export {
   getVisitsByProperty,
   getUpcomingVisits,
   getVisitStats,
+  getScheduledProperties,
 };

@@ -4,12 +4,9 @@ import validate from '../../middlewares/validate.js';
 import {
   scheduleVisit,
   getVisits,
-  getVisit,
   updateVisit,
   deleteVisit,
   confirmVisitHandler,
-  cancelVisitHandler,
-  rescheduleVisitHandler,
   completeVisitHandler,
   getBookedTimeSlotsHandler,
   checkTimeSlotAvailabilityHandler,
@@ -22,6 +19,8 @@ import {
   updateMyVisit,
   cancelMyVisit,
   rescheduleMyVisit,
+  getMyScheduledProperties,
+  getUserScheduledProperties,
 } from '../../controllers/visit.controller.js';
 import {
   scheduleVisit as scheduleVisitValidation,
@@ -50,6 +49,7 @@ router.use(auth());
 // User-specific routes (users can only access their own data)
 router.post('/schedule', validate(scheduleVisitValidation), scheduleVisit);
 router.get('/my-visits', validate(getVisitsValidation), getMyVisits);
+router.get('/my-scheduled-properties', validate(getVisitsValidation), getMyScheduledProperties);
 router.get('/upcoming', validate(getVisitsValidation), getUpcomingVisitsHandler);
 router.get('/stats', getVisitStatsHandler);
 router.get('/:visitId', validate(getVisitValidation), getVisitDetails);
@@ -60,6 +60,7 @@ router.patch('/:visitId/reschedule', validate(rescheduleVisit), rescheduleMyVisi
 // Admin/Builder routes (for managing all visits)
 router.get('/', validate(getVisitsValidation), getVisits);
 router.get('/users/:userId', validate(getUserVisitsValidation), getUserVisits);
+router.get('/users/:userId/scheduled-properties', validate(getUserVisitsValidation), getUserScheduledProperties);
 router.get('/properties/:propertyId', validate(getPropertyVisitsValidation), getPropertyVisits);
 router.patch('/:visitId/confirm', validate(confirmVisit), confirmVisitHandler);
 router.patch('/:visitId/complete', validate(completeVisit), completeVisitHandler);

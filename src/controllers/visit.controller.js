@@ -18,6 +18,7 @@ import {
   getVisitsByProperty,
   getUpcomingVisits,
   getVisitStats,
+  getScheduledProperties,
 } from '../services/visit.service.js';
 
 /**
@@ -300,6 +301,30 @@ const rescheduleMyVisit = catchAsync(async (req, res) => {
   res.send(rescheduledVisit);
 });
 
+/**
+ * Get scheduled properties for authenticated user
+ * @param {Object} req
+ * @param {Object} res
+ * @returns {Promise<QueryResult>}
+ */
+const getMyScheduledProperties = catchAsync(async (req, res) => {
+  const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  const result = await getScheduledProperties(req.user.id, options);
+  res.send(result);
+});
+
+/**
+ * Get scheduled properties for a specific user (admin/builder access)
+ * @param {Object} req
+ * @param {Object} res
+ * @returns {Promise<QueryResult>}
+ */
+const getUserScheduledProperties = catchAsync(async (req, res) => {
+  const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  const result = await getScheduledProperties(req.params.userId, options);
+  res.send(result);
+});
+
 export {
   scheduleVisit,
   getVisits,
@@ -321,4 +346,6 @@ export {
   updateMyVisit,
   cancelMyVisit,
   rescheduleMyVisit,
+  getMyScheduledProperties,
+  getUserScheduledProperties,
 };

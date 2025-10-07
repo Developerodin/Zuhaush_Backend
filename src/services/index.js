@@ -6,5 +6,7 @@ export * as builderService from './builder.service.js';
 export * as propertyService from './property.service.js';
 export * as otpService from './otp.service.js';
 export * as adminService from './admin.service.js';
+export * as likeService from './like.service.js';
+export * as commentService from './comment.service.js';
 
 

@@ -254,6 +254,10 @@ const propertySchema = mongoose.Schema(
       type: Number,
       default: 0,
     },
+    likes: {
+      type: Number,
+      default: 0,
+    },
     inquiries: {
       type: Number,
       default: 0,
@@ -356,7 +360,7 @@ propertySchema.methods.addFlag = function (flag) {
  */
 propertySchema.methods.removeFlag = function (flag) {
   const property = this;
-  property.flags = property.flags.filter(f => f !== flag);
+  property.flags = property.flags.filter((f) => f !== flag);
   return property.save();
 };
 

@@ -3,5 +3,7 @@ import userValidation from './user.validation.js';
 import builderValidation from './builder.validation.js';
 import * as propertyValidation from './property.validation.js';
 import * as adminValidation from './admin.validation.js';
+import likeValidation from './like.validation.js';
+import commentValidation from './comment.validation.js';
 
-export { authValidation, userValidation, builderValidation, propertyValidation, adminValidation };
+export { authValidation, userValidation, builderValidation, propertyValidation, adminValidation, likeValidation, commentValidation };

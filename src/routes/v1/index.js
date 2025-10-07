@@ -7,6 +7,8 @@ import adminRoute from './admin.route.js';
 import visitRoute from './visit.route.js';
 import chatRoute from './chat.route.js';
 import commonRoute from './common.route.js';
+import likeRoute from './like.route.js';
+import commentRoute from './comment.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -44,6 +46,14 @@ const defaultRoutes = [
   {
     path: '/file',
     route: commonRoute,
+  },
+  {
+    path: '/',
+    route: likeRoute,
+  },
+  {
+    path: '/',
+    route: commentRoute,
   },
 ];
 

@@ -60,6 +60,7 @@ const updateUser = {
       role: Joi.string().valid('user', 'admin', 'builder'),
       isActive: Joi.boolean(),
       image: Joi.string().optional(),
+      imageKey: Joi.string().optional(),
       preferences: Joi.object().keys({
         propertyTypes: Joi.array().items(Joi.string()),
         budgetRange: Joi.object().keys({
@@ -194,6 +195,7 @@ const updateProfile = {
     contactNumber: Joi.string().optional(),
     cityofInterest: Joi.string().optional(),
     image: Joi.string().optional(),
+    imageKey: Joi.string().optional(),
     preferences: Joi.object().keys({
       propertyTypes: Joi.array().items(Joi.string()),
       budgetRange: Joi.object().keys({
@@ -229,11 +231,11 @@ const changePassword = {
   }),
 };
 
-export { 
-  createUser, 
-  getUsers, 
-  getUser, 
-  updateUser, 
+export {
+  createUser,
+  getUsers,
+  getUser,
+  updateUser,
   deleteUser,
   login,
   register,
@@ -251,4 +253,3 @@ export {
   updatePreferences,
   changePassword,
 };
-

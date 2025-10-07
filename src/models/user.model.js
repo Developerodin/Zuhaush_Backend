@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import validator from 'validator';
 import bcrypt from 'bcryptjs';
 // import { toJSON, paginate } from './plugins.js';
-import { roles } from '../config/roles.js';
 import toJSON from './plugins/toJSON.plugin.js';
 import paginate from './plugins/paginate.plugin.js';
 
@@ -91,6 +90,12 @@ const userSchema = mongoose.Schema(
       required: false,
       trim: true,
     },
+    // Profile image S3 key (for deletion)
+    imageKey: {
+      type: String,
+      required: false,
+      trim: true,
+    },
     // Registration status tracking
     registrationStatus: {
       type: String,
@@ -132,10 +137,12 @@ const userSchema = mongoose.Schema(
       },
     },
     // Shortlisted properties
-    shortlistProperties: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Property',
-    }],
+    shortlistProperties: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Property',
+      },
+    ],
   },
   {
     timestamps: true,
@@ -183,10 +190,7 @@ userSchema.methods.isOtpValid = function (otpCode) {
  */
 userSchema.methods.isRegistrationComplete = function () {
   const user = this;
-  return user.registrationStatus === 'completed' && 
-         user.name && 
-         user.contactNumber && 
-         user.cityofInterest;
+  return user.registrationStatus === 'completed' && user.name && user.contactNumber && user.cityofInterest;
 };
 
 /**
@@ -195,8 +199,7 @@ userSchema.methods.isRegistrationComplete = function () {
  */
 userSchema.methods.needsToCompleteRegistration = function () {
   const user = this;
-  return user.registrationStatus === 'otp_verified' && 
-         (!user.name || !user.contactNumber || !user.cityofInterest);
+  return user.registrationStatus === 'otp_verified' && (!user.name || !user.contactNumber || !user.cityofInterest);
 };
 
 /**
@@ -219,9 +222,7 @@ userSchema.methods.addToShortlist = function (propertyId) {
  */
 userSchema.methods.removeFromShortlist = function (propertyId) {
   const user = this;
-  user.shortlistProperties = user.shortlistProperties.filter(
-    id => id.toString() !== propertyId.toString()
-  );
+  user.shortlistProperties = user.shortlistProperties.filter((id) => id.toString() !== propertyId.toString());
   return user.save();
 };
 
@@ -232,7 +233,7 @@ userSchema.methods.removeFromShortlist = function (propertyId) {
  */
 userSchema.methods.isPropertyShortlisted = function (propertyId) {
   const user = this;
-  return user.shortlistProperties.some(id => id.toString() === propertyId.toString());
+  return user.shortlistProperties.some((id) => id.toString() === propertyId.toString());
 };
 
 userSchema.pre('save', async function (next) {
@@ -240,7 +241,7 @@ userSchema.pre('save', async function (next) {
   if (user.isModified('password')) {
     user.password = await bcrypt.hash(user.password, 8);
   }
-  
+
   // Update registration status based on completed fields
   if (user.isModified(['name', 'contactNumber', 'cityofInterest', 'isOtpVerified'])) {
     if (user.isOtpVerified && user.name && user.contactNumber && user.cityofInterest) {
@@ -249,7 +250,7 @@ userSchema.pre('save', async function (next) {
       user.registrationStatus = 'otp_verified';
     }
   }
-  
+
   next();
 });
 
@@ -259,4 +260,3 @@ userSchema.pre('save', async function (next) {
 const User = mongoose.model('User', userSchema);
 
 export default User;
-

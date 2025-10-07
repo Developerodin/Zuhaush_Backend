@@ -6,7 +6,7 @@ import propertyRoute from './property.route.js';
 import adminRoute from './admin.route.js';
 import visitRoute from './visit.route.js';
 import chatRoute from './chat.route.js';
-
+import commonRoute from './common.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -40,6 +40,10 @@ const defaultRoutes = [
   {
     path: '/chat',
     route: chatRoute,
+  },
+  {
+    path: '/file',
+    route: commonRoute,
   },
 ];
 

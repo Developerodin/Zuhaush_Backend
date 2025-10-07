@@ -6,6 +6,7 @@ import Property from './property.model.js';
 import Like from './likes.model.js';
 import Comment from './comments.model.js';
 import Visit from './visit.model.js';
+import { Message} from './chat.model.js';
 
-export { Token, User, Builder, Admin, Property, Like, Comment, Visit };
+export { Token, User, Builder, Admin, Property, Like, Comment, Visit, Message };
 

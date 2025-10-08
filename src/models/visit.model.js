@@ -163,9 +163,19 @@ visitSchema.methods.complete = function () {
  * @returns {Promise<boolean>}
  */
 visitSchema.statics.isTimeSlotAvailable = async function (propertyId, date, time, excludeVisitId = null) {
+  // Create start and end of day for the given date
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
   const query = {
     property: propertyId,
-    date,
+    date: {
+      $gte: startOfDay,
+      $lte: endOfDay
+    },
     time,
     status: { $in: ['scheduled', 'confirmed', 'rescheduled'] },
   };
@@ -185,9 +195,19 @@ visitSchema.statics.isTimeSlotAvailable = async function (propertyId, date, time
  * @returns {Promise<string[]>}
  */
 visitSchema.statics.getBookedTimeSlots = async function (propertyId, date) {
+  // Create start and end of day for the given date
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
   const bookedSlots = await this.find({
     property: propertyId,
-    date,
+    date: {
+      $gte: startOfDay,
+      $lte: endOfDay
+    },
     status: { $in: ['scheduled', 'confirmed', 'rescheduled'] },
   }).select('time');
   

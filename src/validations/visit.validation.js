@@ -86,7 +86,19 @@ const getBookedTimeSlots = {
     propertyId: Joi.string().required().custom(objectId),
   }),
   query: Joi.object().keys({
-    date: Joi.date().required().min('now'),
+    date: Joi.date().required().custom((value, helpers) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const inputDate = new Date(value);
+      inputDate.setHours(0, 0, 0, 0);
+      
+      if (inputDate < today) {
+        return helpers.error('date.past');
+      }
+      return value;
+    }).messages({
+      'date.past': 'Date cannot be in the past'
+    }),
   }),
 };
 
@@ -95,7 +107,19 @@ const checkTimeSlotAvailability = {
     propertyId: Joi.string().required().custom(objectId),
   }),
   query: Joi.object().keys({
-    date: Joi.date().required().min('now'),
+    date: Joi.date().required().custom((value, helpers) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const inputDate = new Date(value);
+      inputDate.setHours(0, 0, 0, 0);
+      
+      if (inputDate < today) {
+        return helpers.error('date.past');
+      }
+      return value;
+    }).messages({
+      'date.past': 'Date cannot be in the past'
+    }),
     time: Joi.string()
       .required()
       .pattern(/^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i)

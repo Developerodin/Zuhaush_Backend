@@ -4,7 +4,19 @@ import { objectId } from './custom.validation.js';
 const scheduleVisit = {
   body: Joi.object().keys({
     property: Joi.string().required().custom(objectId),
-    date: Joi.date().required().min('now'),
+    date: Joi.date().required().custom((value, helpers) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const inputDate = new Date(value);
+      inputDate.setHours(0, 0, 0, 0);
+      
+      if (inputDate < today) {
+        return helpers.error('date.past');
+      }
+      return value;
+    }).messages({
+      'date.past': 'Date cannot be in the past'
+    }),
     time: Joi.string()
       .required()
       .pattern(/^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i)
@@ -38,7 +50,19 @@ const updateVisit = {
   }),
   body: Joi.object()
     .keys({
-      date: Joi.date().min('now'),
+      date: Joi.date().custom((value, helpers) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const inputDate = new Date(value);
+        inputDate.setHours(0, 0, 0, 0);
+        
+        if (inputDate < today) {
+          return helpers.error('date.past');
+        }
+        return value;
+      }).messages({
+        'date.past': 'Date cannot be in the past'
+      }),
       time: Joi.string()
         .pattern(/^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i)
         .messages({
@@ -65,7 +89,19 @@ const rescheduleVisit = {
     visitId: Joi.string().required().custom(objectId),
   }),
   body: Joi.object().keys({
-    date: Joi.date().required().min('now'),
+    date: Joi.date().required().custom((value, helpers) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const inputDate = new Date(value);
+      inputDate.setHours(0, 0, 0, 0);
+      
+      if (inputDate < today) {
+        return helpers.error('date.past');
+      }
+      return value;
+    }).messages({
+      'date.past': 'Date cannot be in the past'
+    }),
     time: Joi.string()
       .required()
       .pattern(/^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i)

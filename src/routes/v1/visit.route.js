@@ -21,6 +21,7 @@ import {
   rescheduleMyVisit,
   getMyScheduledProperties,
   getUserScheduledProperties,
+  getMasterTimeSlotsHandler,
 } from '../../controllers/visit.controller.js';
 import {
   scheduleVisit as scheduleVisitValidation,
@@ -40,6 +41,7 @@ import {
 const router = express.Router();
 
 // Public routes (no authentication required)
+router.get('/master-time-slots', getMasterTimeSlotsHandler);
 router.get('/properties/:propertyId/booked-slots', validate(getBookedTimeSlots), getBookedTimeSlotsHandler);
 router.get('/properties/:propertyId/check-availability', validate(checkTimeSlotAvailability), checkTimeSlotAvailabilityHandler);
 

@@ -19,6 +19,7 @@ import {
   getUpcomingVisits,
   getVisitStats,
   getScheduledProperties,
+  getMasterTimeSlots,
 } from '../services/visit.service.js';
 
 /**
@@ -325,6 +326,17 @@ const getUserScheduledProperties = catchAsync(async (req, res) => {
   res.send(result);
 });
 
+/**
+ * Get master time slots data
+ * @param {Object} req
+ * @param {Object} res
+ * @returns {Promise<string[]>}
+ */
+const getMasterTimeSlotsHandler = catchAsync(async (req, res) => {
+  const timeSlots = getMasterTimeSlots();
+  res.send({ masterTimeSlots: timeSlots });
+});
+
 export {
   scheduleVisit,
   getVisits,
@@ -348,4 +360,5 @@ export {
   rescheduleMyVisit,
   getMyScheduledProperties,
   getUserScheduledProperties,
+  getMasterTimeSlotsHandler,
 };

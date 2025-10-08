@@ -5,6 +5,7 @@ import builderRoute from './builder.route.js';
 import propertyRoute from './property.route.js';
 import adminRoute from './admin.route.js';
 import visitRoute from './visit.route.js';
+import propertyViewRoute from './propertyView.route.js';
 import chatRoute from './chat.route.js';
 import commonRoute from './common.route.js';
 import likeRoute from './like.route.js';
@@ -38,6 +39,10 @@ const defaultRoutes = [
   {
     path: '/visits',
     route: visitRoute,
+  },
+  {
+    path: '/property-views',
+    route: propertyViewRoute,
   },
   {
     path: '/chat',

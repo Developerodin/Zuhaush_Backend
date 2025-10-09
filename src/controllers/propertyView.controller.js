@@ -21,9 +21,9 @@ const trackPropertyView = catchAsync(async (req, res) => {
   
   const propertyView = await createPropertyView(req.body);
   
-  // Create notification for builder (only for new views, not repeat views)
+  // Create notifications for both builder and user (only for new views, not repeat views)
   try {
-    const { createPropertyNotifications } = await import('../services/notification.service.js');
+    const { createPropertyNotifications, createSystemNotifications } = await import('../services/notification.service.js');
     const Property = (await import('../models/property.model.js')).default;
     const property = await Property.findById(req.body.property).populate('builder');
     
@@ -36,16 +36,33 @@ const trackPropertyView = catchAsync(async (req, res) => {
       });
       
       if (!existingView) {
+        // Notification for builder
         await createPropertyNotifications({
           property,
           action: 'property_viewed',
           userId: req.user.id,
           builderId: property.builder._id
         });
+        
+        // Notification for user
+        await createSystemNotifications({
+          title: 'Property Viewed',
+          description: `You have viewed "${property.title}"`,
+          recipientType: 'user',
+          recipientId: req.user.id,
+          notificationType: 'property_viewed',
+          priority: 'low',
+          actionData: {
+            type: 'visit_property',
+            url: `/properties/${property._id}`,
+            metadata: { propertyId: property._id }
+          },
+          metadata: { propertyId: property._id, propertyTitle: property.title }
+        });
       }
     }
   } catch (error) {
-    console.error('Failed to create property view notification:', error);
+    console.error('Failed to create property view notifications:', error);
     // Don't throw error - notification failure shouldn't break the main operation
   }
   

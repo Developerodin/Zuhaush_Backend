@@ -464,17 +464,35 @@ const addToShortlist = async (userId, propertyId) => {
 
   const updatedUser = await user.addToShortlist(propertyId);
 
-  // Create notification for builder
+  // Create notifications for both builder and user
   try {
-    const { createPropertyNotifications } = await import('./notification.service.js');
+    const { createPropertyNotifications, createSystemNotifications } = await import('./notification.service.js');
+    
+    // Notification for builder
     await createPropertyNotifications({
       property,
       action: 'property_shortlisted',
       userId,
       builderId: property.builder._id
     });
+    
+    // Notification for user
+    await createSystemNotifications({
+      title: 'Property Added to Shortlist',
+      description: `You have successfully added "${property.title}" to your shortlist`,
+      recipientType: 'user',
+      recipientId: userId,
+      notificationType: 'property_shortlisted',
+      priority: 'medium',
+      actionData: {
+        type: 'visit_property',
+        url: `/properties/${property._id}`,
+        metadata: { propertyId: property._id }
+      },
+      metadata: { propertyId: property._id, propertyTitle: property.title }
+    });
   } catch (error) {
-    console.error('Failed to create shortlist notification:', error);
+    console.error('Failed to create shortlist notifications:', error);
     // Don't throw error - notification failure shouldn't break the main operation
   }
 

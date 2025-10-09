@@ -53,7 +53,7 @@ const userSchema = mongoose.Schema(
     },
     role: {
       type: String,
-
+      enum: ['user', 'agent', 'guest', 'admin', 'builder'],
       default: 'user',
     },
     isEmailVerified: {
@@ -143,6 +143,37 @@ const userSchema = mongoose.Schema(
         ref: 'Property',
       },
     ],
+    // Agent-specific fields
+    reraNumber: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    state: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    agencyName: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    reraCertificate: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    reraCertificateKey: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    yearsOfExperience: {
+      type: Number,
+      required: false,
+      min: 0,
+    },
   },
   {
     timestamps: true,

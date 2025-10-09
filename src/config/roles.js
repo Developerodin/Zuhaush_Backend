@@ -1,5 +1,6 @@
 const allRoles = {
   user: [],
+  agent: [],
   guest: [],
   admin: ['getUsers', 'manageUsers', 'getBuilders', 'manageBuilders'],
   super_admin: ['getUsers', 'manageUsers', 'getBuilders', 'manageBuilders'],

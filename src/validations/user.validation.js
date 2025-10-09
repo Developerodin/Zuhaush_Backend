@@ -7,18 +7,27 @@ const createUser = {
     email: Joi.string().required().email(),
     password: Joi.string().required().custom(password),
     name: Joi.string().required(),
-    role: Joi.string().valid('user', 'admin', 'builder').default('user'),
+    role: Joi.string().valid('user', 'agent').default('user'),
     contactNumber: Joi.string().optional(),
     cityofInterest: Joi.string().optional(),
     accountType: Joi.string().valid('registered', 'guest').default('registered'),
-    preferences: Joi.object().keys({
-      propertyTypes: Joi.array().items(Joi.string()),
-      budgetRange: Joi.object().keys({
-        min: Joi.number(),
-        max: Joi.number(),
-      }),
-      locations: Joi.array().items(Joi.string()),
-    }).optional(),
+    preferences: Joi.object()
+      .keys({
+        propertyTypes: Joi.array().items(Joi.string()),
+        budgetRange: Joi.object().keys({
+          min: Joi.number(),
+          max: Joi.number(),
+        }),
+        locations: Joi.array().items(Joi.string()),
+      })
+      .optional(),
+    // Agent-specific fields
+    reraNumber: Joi.string().optional(),
+    state: Joi.string().optional(),
+    agencyName: Joi.string().optional(),
+    reraCertificate: Joi.string().optional(),
+    reraCertificateKey: Joi.string().optional(),
+    yearsOfExperience: Joi.number().min(0).optional(),
   }),
 };
 
@@ -57,7 +66,7 @@ const updateUser = {
       name: Joi.string(),
       contactNumber: Joi.string().optional(),
       cityofInterest: Joi.string().optional(),
-      role: Joi.string().valid('user', 'admin', 'builder'),
+      role: Joi.string().valid('user', 'agent'),
       isActive: Joi.boolean(),
       image: Joi.string().optional(),
       imageKey: Joi.string().optional(),
@@ -75,6 +84,13 @@ const updateUser = {
         visitReminder: Joi.boolean(),
         releaseMessages: Joi.boolean(),
       }),
+      // Agent-specific fields
+      reraNumber: Joi.string().optional(),
+      state: Joi.string().optional(),
+      agencyName: Joi.string().optional(),
+      reraCertificate: Joi.string().optional(),
+      reraCertificateKey: Joi.string().optional(),
+      yearsOfExperience: Joi.number().min(0).optional(),
     })
     .min(1),
 };
@@ -140,14 +156,23 @@ const completeRegistrationWithProfile = {
     name: Joi.string().required(),
     contactNumber: Joi.string().optional(),
     cityofInterest: Joi.string().optional(),
-    preferences: Joi.object().keys({
-      propertyTypes: Joi.array().items(Joi.string()),
-      budgetRange: Joi.object().keys({
-        min: Joi.number(),
-        max: Joi.number(),
-      }),
-      locations: Joi.array().items(Joi.string()),
-    }).optional(),
+    preferences: Joi.object()
+      .keys({
+        propertyTypes: Joi.array().items(Joi.string()),
+        budgetRange: Joi.object().keys({
+          min: Joi.number(),
+          max: Joi.number(),
+        }),
+        locations: Joi.array().items(Joi.string()),
+      })
+      .optional(),
+    // Agent-specific fields
+    reraNumber: Joi.string().optional(),
+    state: Joi.string().optional(),
+    agencyName: Joi.string().optional(),
+    reraCertificate: Joi.string().optional(),
+    reraCertificateKey: Joi.string().optional(),
+    yearsOfExperience: Joi.number().min(0).optional(),
   }),
 };
 
@@ -190,27 +215,40 @@ const resetPasswordWithVerifiedOTP = {
 
 // Profile update validations
 const updateProfile = {
-  body: Joi.object().keys({
-    name: Joi.string().optional(),
-    contactNumber: Joi.string().optional(),
-    cityofInterest: Joi.string().optional(),
-    image: Joi.string().optional(),
-    imageKey: Joi.string().optional(),
-    preferences: Joi.object().keys({
-      propertyTypes: Joi.array().items(Joi.string()),
-      budgetRange: Joi.object().keys({
-        min: Joi.number(),
-        max: Joi.number(),
-      }),
-      locations: Joi.array().items(Joi.string()),
-    }).optional(),
-    permissions: Joi.object().keys({
-      newProperties: Joi.boolean(),
-      visitConfirmation: Joi.boolean(),
-      visitReminder: Joi.boolean(),
-      releaseMessages: Joi.boolean(),
-    }).optional(),
-  }).min(1),
+  body: Joi.object()
+    .keys({
+      name: Joi.string().optional(),
+      contactNumber: Joi.string().optional(),
+      cityofInterest: Joi.string().optional(),
+      image: Joi.string().optional(),
+      imageKey: Joi.string().optional(),
+      preferences: Joi.object()
+        .keys({
+          propertyTypes: Joi.array().items(Joi.string()),
+          budgetRange: Joi.object().keys({
+            min: Joi.number(),
+            max: Joi.number(),
+          }),
+          locations: Joi.array().items(Joi.string()),
+        })
+        .optional(),
+      permissions: Joi.object()
+        .keys({
+          newProperties: Joi.boolean(),
+          visitConfirmation: Joi.boolean(),
+          visitReminder: Joi.boolean(),
+          releaseMessages: Joi.boolean(),
+        })
+        .optional(),
+      // Agent-specific fields
+      reraNumber: Joi.string().optional(),
+      state: Joi.string().optional(),
+      agencyName: Joi.string().optional(),
+      reraCertificate: Joi.string().optional(),
+      reraCertificateKey: Joi.string().optional(),
+      yearsOfExperience: Joi.number().min(0).optional(),
+    })
+    .min(1),
 };
 
 const updatePreferences = {

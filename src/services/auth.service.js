@@ -232,10 +232,10 @@ const completeLoginWithOTP = async (email, otp) => {
  * @returns {Promise<Object>}
  */
 const registerWithPasswordAndSendOTP = async (userData) => {
-  const { email, password } = userData;
+  const { email, password, role = 'user' } = userData;
   
-  // Create user with only email and password
-  const user = await createUser({ email, password });
+  // Create user with email, password, and role
+  const user = await createUser({ email, password, role });
   
   // Send OTP for email verification
   await sendEmailOTP(email, 'email_verification');
@@ -243,7 +243,8 @@ const registerWithPasswordAndSendOTP = async (userData) => {
   return { 
     message: 'OTP sent to your email. Please verify to complete registration.',
     userId: user.id,
-    email: user.email 
+    email: user.email,
+    role: user.role
   };
 };
 

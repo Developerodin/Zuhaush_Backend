@@ -81,7 +81,7 @@ const registerWithOTP = {
     name: Joi.string().required(),
     password: Joi.string().required().custom(password),
     contactNumber: Joi.string().optional(),
-    city: Joi.string().optional(),
+    cityofInterest: Joi.string().optional(),
   }),
 };
 
@@ -111,6 +111,7 @@ const registerWithPasswordAndSendOTP = {
   body: Joi.object().keys({
     email: Joi.string().email().required(),
     password: Joi.string().required().custom(password),
+    role: Joi.string().valid('user', 'agent').optional().default('user'),
   }),
 };
 
@@ -133,7 +134,14 @@ const completeRegistrationWithProfile = {
       }),
     name: Joi.string().required(),
     contactNumber: Joi.string().optional(),
-    city: Joi.string().optional(),
+    cityofInterest: Joi.string().optional(),
+    // Agent-specific fields (all optional, will be validated if role is agent)
+    reraNumber: Joi.string().optional(),
+    state: Joi.string().optional(),
+    agencyName: Joi.string().optional(),
+    reraCertificate: Joi.string().optional(),
+    reraCertificateKey: Joi.string().optional(),
+    yearsOfExperience: Joi.number().min(0).optional(),
   }),
 };
 

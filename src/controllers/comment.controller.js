@@ -14,13 +14,14 @@ const createComment = catchAsync(async (req, res) => {
     req.body.text
   );
   
-  // Create notification for builder
+  // Create notifications for both builder and user
   try {
     const { createSystemNotifications } = await import('../services/notification.service.js');
     const Property = (await import('../models/property.model.js')).default;
     const property = await Property.findById(req.params.propertyId).populate('builder');
     
     if (property && property.builder) {
+      // Notification for builder
       await createSystemNotifications({
         title: 'New Comment on Property',
         description: `A user commented on your property "${property.title}": "${req.body.text.substring(0, 100)}${req.body.text.length > 100 ? '...' : ''}"`,
@@ -37,9 +38,25 @@ const createComment = catchAsync(async (req, res) => {
         senderId: req.user._id,
         metadata: { propertyId: property._id, commentId: comment._id, propertyTitle: property.title }
       });
+      
+      // Notification for user
+      await createSystemNotifications({
+        title: 'Comment Posted Successfully',
+        description: `Your comment on "${property.title}" has been posted successfully`,
+        recipientType: 'user',
+        recipientId: req.user._id,
+        notificationType: 'system_announcement',
+        priority: 'low',
+        actionData: {
+          type: 'view_document',
+          url: `/properties/${property._id}`,
+          metadata: { propertyId: property._id, commentId: comment._id }
+        },
+        metadata: { propertyId: property._id, commentId: comment._id, propertyTitle: property.title }
+      });
     }
   } catch (error) {
-    console.error('Failed to create comment notification:', error);
+    console.error('Failed to create comment notifications:', error);
     // Don't throw error - notification failure shouldn't break the main operation
   }
   

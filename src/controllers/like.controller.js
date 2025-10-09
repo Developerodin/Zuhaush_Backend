@@ -9,6 +9,28 @@ import pick from '../utils/pick.js';
  */
 const toggleLike = catchAsync(async (req, res) => {
   const result = await likeService.toggleLike(req.user._id, req.params.propertyId);
+  
+  // Create notification for builder when property is liked
+  if (result.liked) {
+    try {
+      const { createPropertyNotifications } = await import('../services/notification.service.js');
+      const Property = (await import('../models/property.model.js')).default;
+      const property = await Property.findById(req.params.propertyId).populate('builder');
+      
+      if (property && property.builder) {
+        await createPropertyNotifications({
+          property,
+          action: 'property_shortlisted', // Using shortlisted as it's similar to liking
+          userId: req.user._id,
+          builderId: property.builder._id
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create property like notification:', error);
+      // Don't throw error - notification failure shouldn't break the main operation
+    }
+  }
+  
   res.status(httpStatus.OK).send(result);
 });
 

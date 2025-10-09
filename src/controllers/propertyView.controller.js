@@ -7,6 +7,7 @@ import {
   getPropertyViewStats,
   getMostViewedProperties,
 } from '../services/propertyView.service.js';
+import PropertyView from '../models/propertyView.model.js';
 
 /**
  * Track property view
@@ -19,6 +20,35 @@ const trackPropertyView = catchAsync(async (req, res) => {
   req.body.user = req.user.id;
   
   const propertyView = await createPropertyView(req.body);
+  
+  // Create notification for builder (only for new views, not repeat views)
+  try {
+    const { createPropertyNotifications } = await import('../services/notification.service.js');
+    const Property = (await import('../models/property.model.js')).default;
+    const property = await Property.findById(req.body.property).populate('builder');
+    
+    if (property && property.builder) {
+      // Check if this is a new view (not a repeat view from the same user)
+      const existingView = await PropertyView.findOne({
+        user: req.user.id,
+        property: req.body.property,
+        createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
+      });
+      
+      if (!existingView) {
+        await createPropertyNotifications({
+          property,
+          action: 'property_viewed',
+          userId: req.user.id,
+          builderId: property.builder._id
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Failed to create property view notification:', error);
+    // Don't throw error - notification failure shouldn't break the main operation
+  }
+  
   res.status(httpStatus.CREATED).send(propertyView);
 });
 

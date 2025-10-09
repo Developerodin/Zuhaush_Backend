@@ -5,5 +5,6 @@ import * as propertyValidation from './property.validation.js';
 import * as adminValidation from './admin.validation.js';
 import likeValidation from './like.validation.js';
 import commentValidation from './comment.validation.js';
+import * as notificationValidation from './notification.validation.js';
 
-export { authValidation, userValidation, builderValidation, propertyValidation, adminValidation, likeValidation, commentValidation };
+export { authValidation, userValidation, builderValidation, propertyValidation, adminValidation, likeValidation, commentValidation, notificationValidation };

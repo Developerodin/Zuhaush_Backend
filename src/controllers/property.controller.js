@@ -283,6 +283,20 @@ const removeMedia = catchAsync(async (req, res) => {
  */
 const approvePropertyHandler = catchAsync(async (req, res) => {
   const property = await approveProperty(req.params.propertyId, req.user.id);
+  
+  // Create notification for builder
+  try {
+    const { createPropertyNotifications } = await import('../services/notification.service.js');
+    await createPropertyNotifications({
+      property,
+      action: 'property_approved',
+      builderId: property.builder
+    });
+  } catch (error) {
+    console.error('Failed to create property approval notification:', error);
+    // Don't throw error - notification failure shouldn't break the main operation
+  }
+  
   res.send(property);
 });
 
@@ -294,6 +308,21 @@ const approvePropertyHandler = catchAsync(async (req, res) => {
  */
 const rejectPropertyHandler = catchAsync(async (req, res) => {
   const property = await rejectProperty(req.params.propertyId, req.user.id, req.body.reason);
+  
+  // Create notification for builder
+  try {
+    const { createPropertyNotifications } = await import('../services/notification.service.js');
+    await createPropertyNotifications({
+      property,
+      action: 'property_rejected',
+      builderId: property.builder,
+      additionalData: { reason: req.body.reason }
+    });
+  } catch (error) {
+    console.error('Failed to create property rejection notification:', error);
+    // Don't throw error - notification failure shouldn't break the main operation
+  }
+  
   res.send(property);
 });
 

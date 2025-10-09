@@ -8,5 +8,4 @@ export * as otpService from './otp.service.js';
 export * as adminService from './admin.service.js';
 export * as likeService from './like.service.js';
 export * as commentService from './comment.service.js';
-
-
+export * as notificationService from './notification.service.js';

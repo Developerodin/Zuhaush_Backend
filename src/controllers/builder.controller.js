@@ -132,6 +132,20 @@ const approveBuilder = catchAsync(async (req, res) => {
   const { builderId } = req.params;
   const { notes } = req.body;
   const builder = await builderService.approveBuilder(builderId, req.user.id, notes);
+  
+  // Create notification for builder
+  try {
+    const { createProfileNotifications } = await import('../services/notification.service.js');
+    await createProfileNotifications({
+      builderId,
+      action: 'profile_approved',
+      additionalData: { notes }
+    });
+  } catch (error) {
+    console.error('Failed to create builder approval notification:', error);
+    // Don't throw error - notification failure shouldn't break the main operation
+  }
+  
   res.send(builder);
 });
 
@@ -139,6 +153,20 @@ const rejectBuilder = catchAsync(async (req, res) => {
   const { builderId } = req.params;
   const { notes } = req.body;
   const builder = await builderService.rejectBuilder(builderId, req.user.id, notes);
+  
+  // Create notification for builder
+  try {
+    const { createProfileNotifications } = await import('../services/notification.service.js');
+    await createProfileNotifications({
+      builderId,
+      action: 'profile_rejected',
+      additionalData: { reason: notes }
+    });
+  } catch (error) {
+    console.error('Failed to create builder rejection notification:', error);
+    // Don't throw error - notification failure shouldn't break the main operation
+  }
+  
   res.send(builder);
 });
 

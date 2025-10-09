@@ -17,7 +17,30 @@ const sendMessage = async (userId, builderId, message, senderType) => {
     senderType,
   });
 
-  return newMessage.populate('userId', 'name email').populate('builderId', 'name email');
+  const populatedMessage = await newMessage.populate('userId', 'name email').populate('builderId', 'name email');
+
+  // Create notification for the recipient
+  try {
+    const { createChatNotifications } = await import('./notification.service.js');
+    
+    // Determine recipient type and ID
+    const recipientType = senderType === 'User' ? 'builder' : 'user';
+    const recipientId = senderType === 'User' ? builderId : userId;
+    const senderId = senderType === 'User' ? userId : builderId;
+    
+    await createChatNotifications({
+      message: populatedMessage,
+      action: 'new_message',
+      senderId,
+      recipientId,
+      recipientType
+    });
+  } catch (error) {
+    console.error('Failed to create chat notification:', error);
+    // Don't throw error - notification failure shouldn't break the main operation
+  }
+
+  return populatedMessage;
 };
 
 /**

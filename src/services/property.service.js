@@ -446,7 +446,7 @@ const getPropertyStats = async (builderId) => {
  */
 const addToShortlist = async (userId, propertyId) => {
   // Check if property exists
-  const property = await Property.findById(propertyId);
+  const property = await Property.findById(propertyId).populate('builder');
   if (!property) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
   }
@@ -462,7 +462,23 @@ const addToShortlist = async (userId, propertyId) => {
     throw new ApiError(httpStatus.CONFLICT, 'Property already in shortlist');
   }
 
-  return user.addToShortlist(propertyId);
+  const updatedUser = await user.addToShortlist(propertyId);
+
+  // Create notification for builder
+  try {
+    const { createPropertyNotifications } = await import('./notification.service.js');
+    await createPropertyNotifications({
+      property,
+      action: 'property_shortlisted',
+      userId,
+      builderId: property.builder._id
+    });
+  } catch (error) {
+    console.error('Failed to create shortlist notification:', error);
+    // Don't throw error - notification failure shouldn't break the main operation
+  }
+
+  return updatedUser;
 };
 
 /**

@@ -10,7 +10,7 @@ import mongoose from 'mongoose';
  */
 const createVisit = async (visitBody) => {
   // Check if property exists
-  const property = await Property.findById(visitBody.property);
+  const property = await Property.findById(visitBody.property).populate('builder');
   if (!property) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
   }
@@ -32,7 +32,26 @@ const createVisit = async (visitBody) => {
     throw new ApiError(httpStatus.CONFLICT, 'Time slot is not available');
   }
 
-  return Visit.create(visitBody);
+  const visit = await Visit.create(visitBody);
+  
+  // Populate the visit with property data for notifications
+  await visit.populate('property');
+
+  // Create notifications for visit scheduling
+  try {
+    const { createVisitNotifications } = await import('./notification.service.js');
+    await createVisitNotifications({
+      visit,
+      action: 'visit_scheduled',
+      userId: visitBody.user,
+      builderId: property.builder._id
+    });
+  } catch (error) {
+    console.error('Failed to create visit notification:', error);
+    // Don't throw error - notification failure shouldn't break the main operation
+  }
+
+  return visit;
 };
 
 /**

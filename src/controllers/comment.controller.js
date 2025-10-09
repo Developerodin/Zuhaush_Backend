@@ -13,6 +13,36 @@ const createComment = catchAsync(async (req, res) => {
     req.params.propertyId,
     req.body.text
   );
+  
+  // Create notification for builder
+  try {
+    const { createSystemNotifications } = await import('../services/notification.service.js');
+    const Property = (await import('../models/property.model.js')).default;
+    const property = await Property.findById(req.params.propertyId).populate('builder');
+    
+    if (property && property.builder) {
+      await createSystemNotifications({
+        title: 'New Comment on Property',
+        description: `A user commented on your property "${property.title}": "${req.body.text.substring(0, 100)}${req.body.text.length > 100 ? '...' : ''}"`,
+        recipientType: 'builder',
+        recipientId: property.builder._id,
+        notificationType: 'user_inquiry',
+        priority: 'medium',
+        actionData: {
+          type: 'view_document',
+          url: `/properties/${property._id}`,
+          metadata: { propertyId: property._id, commentId: comment._id }
+        },
+        senderType: 'user',
+        senderId: req.user._id,
+        metadata: { propertyId: property._id, commentId: comment._id, propertyTitle: property.title }
+      });
+    }
+  } catch (error) {
+    console.error('Failed to create comment notification:', error);
+    // Don't throw error - notification failure shouldn't break the main operation
+  }
+  
   res.status(httpStatus.CREATED).send(comment);
 });
 

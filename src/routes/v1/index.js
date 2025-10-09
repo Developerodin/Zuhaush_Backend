@@ -10,6 +10,7 @@ import chatRoute from './chat.route.js';
 import commonRoute from './common.route.js';
 import likeRoute from './like.route.js';
 import commentRoute from './comment.route.js';
+import notificationRoute from './notification.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -59,6 +60,10 @@ const defaultRoutes = [
   {
     path: '/',
     route: commentRoute,
+  },
+  {
+    path: '/notifications',
+    route: notificationRoute,
   },
 ];
 

@@ -94,6 +94,21 @@ const deleteVisit = catchAsync(async (req, res) => {
  */
 const confirmVisitHandler = catchAsync(async (req, res) => {
   const visit = await confirmVisit(req.params.visitId, req.user.id);
+  
+  // Create notification for user
+  try {
+    const { createVisitNotifications } = await import('../services/notification.service.js');
+    await createVisitNotifications({
+      visit,
+      action: 'visit_confirmed',
+      userId: visit.user._id || visit.user,
+      builderId: req.user.id
+    });
+  } catch (error) {
+    console.error('Failed to create visit confirmation notification:', error);
+    // Don't throw error - notification failure shouldn't break the main operation
+  }
+  
   res.send(visit);
 });
 
@@ -105,6 +120,21 @@ const confirmVisitHandler = catchAsync(async (req, res) => {
  */
 const cancelVisitHandler = catchAsync(async (req, res) => {
   const visit = await cancelVisit(req.params.visitId, req.user.id);
+  
+  // Create notification for both parties
+  try {
+    const { createVisitNotifications } = await import('../services/notification.service.js');
+    await createVisitNotifications({
+      visit,
+      action: 'visit_cancelled',
+      userId: visit.user._id || visit.user,
+      builderId: req.user.id
+    });
+  } catch (error) {
+    console.error('Failed to create visit cancellation notification:', error);
+    // Don't throw error - notification failure shouldn't break the main operation
+  }
+  
   res.send(visit);
 });
 

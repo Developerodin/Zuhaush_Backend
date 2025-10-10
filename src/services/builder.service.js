@@ -42,6 +42,7 @@ const queryBuilders = async (filter, options) => {
       { name: { $regex: filter.q, $options: 'i' } },
       { email: { $regex: filter.q, $options: 'i' } },
       { company: { $regex: filter.q, $options: 'i' } },
+      { state: { $regex: filter.q, $options: 'i' } },
       { city: { $regex: filter.q, $options: 'i' } },
       { contactPerson: { $regex: filter.q, $options: 'i' } },
       { reraRegistrationId: { $regex: filter.q, $options: 'i' } }
@@ -52,6 +53,7 @@ const queryBuilders = async (filter, options) => {
     if (filter.name) searchFields.push({ name: { $regex: filter.name, $options: 'i' } });
     if (filter.email) searchFields.push({ email: { $regex: filter.email, $options: 'i' } });
     if (filter.company) searchFields.push({ company: { $regex: filter.company, $options: 'i' } });
+    if (filter.state) searchFields.push({ state: { $regex: filter.state, $options: 'i' } });
     if (filter.city) searchFields.push({ city: { $regex: filter.city, $options: 'i' } });
     
     if (searchFields.length > 0) {
@@ -65,9 +67,15 @@ const queryBuilders = async (filter, options) => {
     }
   }
   
-  // Handle exact matches for status and isActive
+  // Handle exact matches for status, registrationStatus, role, and isActive
   if (filter.status) {
     mongoFilter.status = filter.status;
+  }
+  if (filter.registrationStatus) {
+    mongoFilter.registrationStatus = filter.registrationStatus;
+  }
+  if (filter.role) {
+    mongoFilter.role = filter.role;
   }
   if (filter.isActive !== undefined) {
     mongoFilter.isActive = filter.isActive === 'true' || filter.isActive === true;
@@ -178,18 +186,26 @@ const registerBuilder = async (builderData) => {
  * @returns {Promise<Object>}
  */
 const registerBuilderAndSendOTP = async (builderData) => {
-  const { email, password } = builderData;
+  const { email, password, role = 'builder', name } = builderData;
   
   // Check if email is already taken
   if (await Builder.isEmailTaken(email)) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
   }
   
-  // Create builder with only email and password
-  const builder = await createBuilder({ email, password });
+  // Create builder with email, password, role, and name (if provided)
+  const builderPayload = { 
+    email, 
+    password, 
+    role,
+    name: name || email.split('@')[0], // Use email prefix as default name if not provided
+    registrationStatus: 'partial'
+  };
   
-  // Send OTP for email verification
-  await sendEmailVerificationOTP(email);
+  const builder = await createBuilder(builderPayload);
+  
+  // Send OTP for email verification (pass 'builder' as userType)
+  await sendEmailVerificationOTP(email, 'builder');
   
   return { 
     message: 'OTP sent to your email. Please verify to complete registration.',
@@ -205,8 +221,14 @@ const registerBuilderAndSendOTP = async (builderData) => {
  * @returns {Promise<Object>}
  */
 const verifyRegistrationOTP = async (email, otp) => {
-  const result = await verifyOTP(email, otp, 'email_verification');
+  const result = await verifyOTP(email, otp, 'email_verification', true, 'builder');
   const builder = await getBuilderById(result.userId);
+  
+  // Update builder to mark OTP as verified
+  await updateBuilderById(builder.id, { 
+    isOtpVerified: true,
+    registrationStatus: 'otp_verified'
+  });
   
   return { 
     message: 'OTP verified successfully. Please complete your profile.',
@@ -228,17 +250,21 @@ const completeRegistrationWithProfile = async (builderId, profileData) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found');
   }
   
-  // Update builder with complete profile data and mark email as verified
-  await updateBuilderById(builder.id, {
+  if (!builder.isOtpVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Please verify your email with OTP first');
+  }
+  
+  // Update builder with complete profile data and set registration status to completed
+  const updatedBuilder = await updateBuilderById(builder.id, {
     ...profileData,
-    isOtpVerified: true,
+    registrationStatus: 'completed',
     lastLoginAt: new Date(),
   });
   
   // Generate auth tokens
-  const tokens = await generateAuthTokens(builder);
+  const tokens = await generateAuthTokens(updatedBuilder);
   
-  return { builder, tokens };
+  return { builder: updatedBuilder, tokens };
 };
 
 /**
@@ -256,8 +282,8 @@ const loginWithPasswordAndSendOTP = async (email, password) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Account is deactivated');
   }
   
-  // Send OTP for email verification
-  await sendEmailVerificationOTP(email);
+  // Send OTP for email verification (pass 'builder' as userType)
+  await sendEmailVerificationOTP(email, 'builder');
   
   return { 
     message: 'OTP sent to your email. Please verify to complete login.',
@@ -273,7 +299,7 @@ const loginWithPasswordAndSendOTP = async (email, password) => {
  * @returns {Promise<Object>}
  */
 const completeLoginWithOTP = async (email, otp) => {
-  const result = await verifyOTP(email, otp, 'email_verification');
+  const result = await verifyOTP(email, otp, 'email_verification', true, 'builder');
   const builder = await getBuilderById(result.userId);
   
   // Update last login
@@ -297,8 +323,8 @@ const sendForgotPasswordOTP = async (email) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found');
   }
 
-  // Send OTP for password reset
-  await sendPasswordResetOTP(email);
+  // Send OTP for password reset (pass 'builder' as userType)
+  await sendPasswordResetOTP(email, 'builder');
   
   return { 
     message: 'OTP sent to your email for password reset.',
@@ -313,7 +339,7 @@ const sendForgotPasswordOTP = async (email) => {
  * @returns {Promise<Object>}
  */
 const verifyForgotPasswordOTP = async (email, otp) => {
-  const result = await verifyOTPWithoutBlacklist(email, otp, 'password_reset');
+  const result = await verifyOTPWithoutBlacklist(email, otp, 'password_reset', 'builder');
   
   return { 
     message: 'OTP verified successfully. You can now reset your password.',
@@ -331,7 +357,7 @@ const verifyForgotPasswordOTP = async (email, otp) => {
  */
 const resetPasswordWithVerifiedOTP = async (email, otp, newPassword) => {
   // Verify OTP again to ensure it's still valid and blacklist it
-  const result = await verifyOTP(email, otp, 'password_reset');
+  const result = await verifyOTP(email, otp, 'password_reset', true, 'builder');
   const builder = await getBuilderById(result.userId);
 
   // Update password

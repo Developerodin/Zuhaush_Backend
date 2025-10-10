@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import moment from 'moment';
 import config from '../config/config.js';
 import { getUserByEmail } from './user.service.js';
+import { getBuilderByEmail } from './builder.service.js';
 import Token from '../models/token.model.js';
 import ApiError from '../utils/ApiError.js';
 import { tokenTypes } from '../config/tokens.js';
@@ -83,9 +84,10 @@ const clearAttempts = (email, type) => {
 /**
  * Send OTP for email verification
  * @param {string} email
+ * @param {string} userType - 'user' or 'builder'
  * @returns {Promise<Object>}
  */
-const sendEmailVerificationOTP = async (email) => {
+const sendEmailVerificationOTP = async (email, userType = 'user') => {
   // Check rate limit
   if (!checkRateLimit(email)) {
     throw new ApiError(httpStatus.TOO_MANY_REQUESTS, 'Too many OTP requests. Please try again later.');
@@ -96,9 +98,18 @@ const sendEmailVerificationOTP = async (email) => {
     throw new ApiError(httpStatus.TOO_MANY_REQUESTS, 'Too many OTP verification attempts. Please try again later.');
   }
 
-  const user = await getUserByEmail(email);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'No user found with this email');
+  // Get user or builder based on type
+  let account;
+  if (userType === 'builder') {
+    account = await getBuilderByEmail(email);
+    if (!account) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'No builder found with this email');
+    }
+  } else {
+    account = await getUserByEmail(email);
+    if (!account) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'No user found with this email');
+    }
   }
 
   // Generate OTP
@@ -108,10 +119,11 @@ const sendEmailVerificationOTP = async (email) => {
   const expires = moment().add(10, 'minutes');
   const otpToken = jwt.sign(
     { 
-      sub: user.id, 
+      sub: account.id, 
       otp, 
       type: tokenTypes.EMAIL_OTP,
-      email 
+      email,
+      userType
     }, 
     config.jwt.secret, 
     { expiresIn: '10m' }
@@ -120,14 +132,14 @@ const sendEmailVerificationOTP = async (email) => {
   // Save OTP token
   await Token.create({
     token: otpToken,
-    user: user.id,
+    user: account.id,
     expires: expires.toDate(),
     type: tokenTypes.EMAIL_OTP,
     blacklisted: false,
   });
 
   // Send OTP via email
-  await sendEmailOtp(email, otp, user.name);
+  await sendEmailOtp(email, otp, account.name);
 
   return { message: 'OTP sent successfully' };
 };
@@ -135,9 +147,10 @@ const sendEmailVerificationOTP = async (email) => {
 /**
  * Send OTP for password reset
  * @param {string} email
+ * @param {string} userType - 'user' or 'builder'
  * @returns {Promise<Object>}
  */
-const sendPasswordResetOTP = async (email) => {
+const sendPasswordResetOTP = async (email, userType = 'user') => {
   // Check rate limit
   if (!checkRateLimit(email)) {
     throw new ApiError(httpStatus.TOO_MANY_REQUESTS, 'Too many OTP requests. Please try again later.');
@@ -148,9 +161,18 @@ const sendPasswordResetOTP = async (email) => {
     throw new ApiError(httpStatus.TOO_MANY_REQUESTS, 'Too many OTP verification attempts. Please try again later.');
   }
 
-  const user = await getUserByEmail(email);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'No user found with this email');
+  // Get user or builder based on type
+  let account;
+  if (userType === 'builder') {
+    account = await getBuilderByEmail(email);
+    if (!account) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'No builder found with this email');
+    }
+  } else {
+    account = await getUserByEmail(email);
+    if (!account) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'No user found with this email');
+    }
   }
 
   // Generate OTP
@@ -160,10 +182,11 @@ const sendPasswordResetOTP = async (email) => {
   const expires = moment().add(10, 'minutes');
   const otpToken = jwt.sign(
     { 
-      sub: user.id, 
+      sub: account.id, 
       otp, 
       type: tokenTypes.PASSWORD_RESET_OTP,
-      email 
+      email,
+      userType
     }, 
     config.jwt.secret, 
     { expiresIn: '10m' }
@@ -172,14 +195,14 @@ const sendPasswordResetOTP = async (email) => {
   // Save OTP token
   await Token.create({
     token: otpToken,
-    user: user.id,
+    user: account.id,
     expires: expires.toDate(),
     type: tokenTypes.PASSWORD_RESET_OTP,
     blacklisted: false,
   });
 
   // Send OTP via email
-  await sendPasswordResetOtp(email, otp, user.name);
+  await sendPasswordResetOtp(email, otp, account.name);
 
   return { message: 'OTP sent successfully' };
 };
@@ -190,12 +213,22 @@ const sendPasswordResetOTP = async (email) => {
  * @param {string} otp
  * @param {string} type
  * @param {boolean} blacklistAfterVerification - Whether to blacklist the OTP after verification
+ * @param {string} userType - 'user' or 'builder'
  * @returns {Promise<Object>}
  */
-const verifyOTP = async (email, otp, type, blacklistAfterVerification = true) => {
-  const user = await getUserByEmail(email);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'No user found with this email');
+const verifyOTP = async (email, otp, type, blacklistAfterVerification = true, userType = 'user') => {
+  // Get user or builder based on type
+  let account;
+  if (userType === 'builder') {
+    account = await getBuilderByEmail(email);
+    if (!account) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'No builder found with this email');
+    }
+  } else {
+    account = await getUserByEmail(email);
+    if (!account) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'No user found with this email');
+    }
   }
 
   // Check attempts
@@ -207,7 +240,7 @@ const verifyOTP = async (email, otp, type, blacklistAfterVerification = true) =>
   const tokenType = type === 'email_verification' ? tokenTypes.EMAIL_OTP : tokenTypes.PASSWORD_RESET_OTP;
   
   const otpTokenDoc = await Token.findOne({
-    user: user.id,
+    user: account.id,
     type: tokenType,
     blacklisted: false,
     expires: { $gt: new Date() }
@@ -238,7 +271,7 @@ const verifyOTP = async (email, otp, type, blacklistAfterVerification = true) =>
     await Token.findByIdAndUpdate(otpTokenDoc._id, { blacklisted: true });
   }
 
-  return { message: 'OTP verified successfully', userId: user.id };
+  return { message: 'OTP verified successfully', userId: account.id };
 };
 
 /**
@@ -246,23 +279,25 @@ const verifyOTP = async (email, otp, type, blacklistAfterVerification = true) =>
  * @param {string} email
  * @param {string} otp
  * @param {string} type
+ * @param {string} userType - 'user' or 'builder'
  * @returns {Promise<Object>}
  */
-const verifyOTPWithoutBlacklist = async (email, otp, type) => {
-  return verifyOTP(email, otp, type, false);
+const verifyOTPWithoutBlacklist = async (email, otp, type, userType = 'user') => {
+  return verifyOTP(email, otp, type, false, userType);
 };
 
 /**
  * Resend OTP
  * @param {string} email
  * @param {string} type
+ * @param {string} userType - 'user' or 'builder'
  * @returns {Promise<Object>}
  */
-const resendOTP = async (email, type) => {
+const resendOTP = async (email, type, userType = 'user') => {
   if (type === 'email_verification') {
-    return sendEmailVerificationOTP(email);
+    return sendEmailVerificationOTP(email, userType);
   } else if (type === 'password_reset') {
-    return sendPasswordResetOTP(email);
+    return sendPasswordResetOTP(email, userType);
   } else {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid OTP type');
   }

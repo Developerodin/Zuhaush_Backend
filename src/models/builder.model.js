@@ -37,6 +37,13 @@ const builderSchema = mongoose.Schema(
       private: true, // used by the toJSON plugin
     },
     
+    // Role field with default value
+    role: {
+      type: String,
+      enum: ['builder'],
+      default: 'builder',
+    },
+    
     // OTP verification fields
     otpCode: {
       type: String,
@@ -53,16 +60,22 @@ const builderSchema = mongoose.Schema(
       default: false,
     },
     
+    // Registration status tracking
+    registrationStatus: {
+      type: String,
+      enum: ['partial', 'otp_verified', 'completed'],
+      default: 'partial',
+    },
+    
     // Business information
-
     contactInfo: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     address: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     logoName: {
@@ -72,12 +85,17 @@ const builderSchema = mongoose.Schema(
     },
     company: {
       type: String,
-      required: true,
+      required: false,
+      trim: true,
+    },
+    state: {
+      type: String,
+      required: false,
       trim: true,
     },
     city: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     logo: {
@@ -85,24 +103,39 @@ const builderSchema = mongoose.Schema(
       required: false,
       trim: true,
     },
+    logoKey: {
+      type: String,
+      required: false,
+      trim: true,
+    },
     reraRegistrationId: {
       type: String,
-      required: true,
+      required: false,
+      trim: true,
+    },
+    reraCertificate: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    reraCertificateKey: {
+      type: String,
+      required: false,
       trim: true,
     },
     
     // Contact details
     contactPerson: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     phone: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
       validate(value) {
-        if (!/^\+?[1-9]\d{1,14}$/.test(value)) {
+        if (value && !/^\+?[1-9]\d{1,14}$/.test(value)) {
           throw new Error('Invalid phone number format');
         }
       },
@@ -300,6 +333,24 @@ builderSchema.methods.isPasswordMatch = async function (password) {
 builderSchema.methods.isOtpValid = function (otpCode) {
   const builder = this;
   return builder.otpCode === otpCode && builder.otpExpiry && builder.otpExpiry > new Date();
+};
+
+/**
+ * Check if builder registration is complete
+ * @returns {boolean}
+ */
+builderSchema.methods.isRegistrationComplete = function () {
+  const builder = this;
+  return builder.registrationStatus === 'completed';
+};
+
+/**
+ * Check if builder needs to complete registration details
+ * @returns {boolean}
+ */
+builderSchema.methods.needsToCompleteRegistration = function () {
+  const builder = this;
+  return builder.registrationStatus === 'otp_verified';
 };
 
 /**
@@ -524,6 +575,15 @@ builderSchema.pre('save', async function (next) {
       if (member.isModified && member.isModified('password')) {
         member.password = await bcrypt.hash(member.password, 8);
       }
+    }
+  }
+  
+  // Update registration status based on completed fields
+  if (builder.isModified(['name', 'contactInfo', 'address', 'company', 'city', 'isOtpVerified'])) {
+    if (builder.isOtpVerified && builder.contactInfo && builder.address && builder.company && builder.city) {
+      builder.registrationStatus = 'completed';
+    } else if (builder.isOtpVerified) {
+      builder.registrationStatus = 'otp_verified';
     }
   }
   

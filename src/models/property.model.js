@@ -127,7 +127,7 @@ const propertySchema = mongoose.Schema(
     amenities: [{
       category: {
         type: String,
-        required: true,
+        required: false,
         enum: ['basic', 'lifestyle', 'security', 'parking', 'maintenance', 'other'],
       },
       name: {

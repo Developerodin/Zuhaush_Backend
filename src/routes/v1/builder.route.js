@@ -11,7 +11,7 @@ const router = express.Router();
 router
   .route('/')
   .post(flexibleAuth('manageBuilders'), validate(builderValidation.createBuilder), builderController.createBuilder)
-  .get(flexibleAuth('getBuilders'), validate(builderValidation.getBuilders), builderController.getBuilders);
+  .get(flexibleAuth(), validate(builderValidation.getBuilders), builderController.getBuilders);
 
 router
   .route('/:builderId')

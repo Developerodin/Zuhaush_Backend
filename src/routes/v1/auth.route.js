@@ -36,6 +36,10 @@ router.post('/forgot-password-otp', validate(authValidation.sendForgotPasswordOT
 router.post('/verify-forgot-password-otp', validate(authValidation.verifyForgotPasswordOTP), authController.verifyForgotPasswordOTPController);
 router.post('/reset-password-otp', validate(authValidation.resetPasswordWithVerifiedOTP), authController.resetPasswordWithVerifiedOTPController);
 
+// New 4-layer registration flow
+router.post('/check-email', validate(authValidation.checkEmail), authController.checkEmailController);
+router.post('/create-password', validate(authValidation.createPassword), authController.createPasswordController);
+
 export default router;
 
 

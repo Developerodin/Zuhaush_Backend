@@ -55,7 +55,7 @@ const verifyEmail = {
 const sendOTP = {
   body: Joi.object().keys({
     email: Joi.string().email().required(),
-    type: Joi.string().valid('email_verification', 'password_reset').required(),
+    type: Joi.string().valid('email_verification', 'password_reset', 'registration').required(),
   }),
 };
 
@@ -63,7 +63,7 @@ const verifyOTP = {
   body: Joi.object().keys({
     email: Joi.string().email().required(),
     otp: Joi.string().length(6).pattern(/^\d+$/).required(),
-    type: Joi.string().valid('email_verification', 'password_reset').required(),
+    type: Joi.string().valid('email_verification', 'password_reset', 'registration').required(),
   }),
 };
 
@@ -169,6 +169,21 @@ const resetPasswordWithVerifiedOTP = {
   }),
 };
 
+// New 4-layer registration flow validations
+const checkEmail = {
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+  }),
+};
+
+const createPassword = {
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+    password: Joi.string().required().custom(password),
+    role: Joi.string().valid('user', 'agent').optional().default('user'),
+  }),
+};
+
 export {
   register,
   login,
@@ -192,4 +207,6 @@ export {
   verifyForgotPasswordOTP,
   resetPasswordWithVerifiedOTP,
   guestLogin,
+  checkEmail,
+  createPassword,
 };

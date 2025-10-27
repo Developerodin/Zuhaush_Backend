@@ -1,6 +1,6 @@
 import httpStatus from 'http-status';
 import catchAsync from '../utils/catchAsync.js';
-import { createUser } from '../services/user.service.js';
+import { createUser, getUserByEmail, updateUserById } from '../services/user.service.js';
 import { generateAuthTokens, generateResetPasswordToken, generateVerifyEmailToken } from '../services/token.service.js';
 import {
   loginUserWithEmailAndPassword,
@@ -23,6 +23,9 @@ import {
   verifyForgotPasswordOTP,
   resetPasswordWithVerifiedOTP,
   guestLogin,
+  checkEmail,
+  sendRegistrationOTP,
+  createPassword,
 } from '../services/auth.service.js';
 import { sendResetPasswordEmail, sendVerificationEmail as sendVerificationEmail2 } from '../services/email.service.js';
 
@@ -81,6 +84,9 @@ const sendOTP = catchAsync(async (req, res) => {
     result = await sendEmailVerificationOTP(email);
   } else if (type === 'password_reset') {
     result = await sendPasswordResetOTP(email);
+  } else if (type === 'registration') {
+    // Handle registration OTP with temp user creation
+    result = await sendRegistrationOTP(email);
   } else {
     return res.status(httpStatus.BAD_REQUEST).json({ message: 'Invalid OTP type' });
   }
@@ -90,7 +96,24 @@ const sendOTP = catchAsync(async (req, res) => {
 
 const verifyOTPCode = catchAsync(async (req, res) => {
   const { email, otp, type } = req.body;
-  const result = await verifyOTP(email, otp, type);
+  let result;
+  
+  if (type === 'registration') {
+    // For registration, verify email_verification type since that's what temp user created
+    result = await verifyOTP(email, otp, 'email_verification');
+    
+    // Mark user as OTP verified for registration flow
+    const user = await getUserByEmail(email);
+    if (user) {
+      await updateUserById(user.id, { 
+        isOtpVerified: true,
+        registrationStatus: 'otp_verified'
+      });
+    }
+  } else {
+    result = await verifyOTP(email, otp, type);
+  }
+  
   res.status(httpStatus.OK).json(result);
 });
 
@@ -166,6 +189,19 @@ const resetPasswordWithVerifiedOTPController = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).json(result);
 });
 
+// New 4-layer registration flow controllers
+const checkEmailController = catchAsync(async (req, res) => {
+  const { email } = req.body;
+  const result = await checkEmail(email);
+  res.status(httpStatus.OK).json(result);
+});
+
+const createPasswordController = catchAsync(async (req, res) => {
+  const { email, password, role } = req.body;
+  const result = await createPassword({ email, password, role });
+  res.status(httpStatus.CREATED).json(result);
+});
+
 export {
   register,
   login,
@@ -189,4 +225,6 @@ export {
   verifyForgotPasswordOTPController,
   resetPasswordWithVerifiedOTPController,
   guestLoginController,
+  checkEmailController,
+  createPasswordController,
 };

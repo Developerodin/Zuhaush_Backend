@@ -373,6 +373,55 @@ Each amenity object can contain:
 6. **Add specifications**: Detailed specifications build trust and reduce inquiries
 7. **Set realistic availability dates**: Helps users plan their property search
 
+## Uploading Media to Property
+
+After creating a property, you can upload media (images, videos, documents, floor plans, brochures) using a separate endpoint.
+
+### Media Upload Endpoint
+```
+POST /v1/properties/:propertyId/media
+```
+
+### Important: Use Multipart/Form-Data ⚠️
+
+**This is NOT a JSON request!** You must use `multipart/form-data` encoding.
+
+### Quick Example (JavaScript)
+```javascript
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);  // The actual file
+formData.append('type', 'image');              // Required: image|video|document|floor_plan|brochure
+formData.append('caption', 'Living Room');     // Optional
+formData.append('isPrimary', 'true');          // Optional
+
+fetch(`/v1/properties/${propertyId}/media`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  },
+  body: formData
+});
+```
+
+### Common Error: "media" is not allowed ❌
+
+If you get this error, you're probably doing this wrong:
+```javascript
+// ❌ WRONG - Don't send a field called "media"
+formData.append('media', file);
+```
+
+Instead, do this:
+```javascript
+// ✅ CORRECT - Field name must be "file"
+formData.append('file', file);
+formData.append('type', 'image');
+```
+
+📚 **For complete media upload documentation with all examples, see**: [MEDIA_UPLOAD_API_DOCUMENTATION.md](./MEDIA_UPLOAD_API_DOCUMENTATION.md)
+
+---
+
 ## Need Help?
 
 For additional support or questions, please refer to the main API documentation or contact the development team.

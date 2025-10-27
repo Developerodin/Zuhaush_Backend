@@ -371,6 +371,100 @@ const guestLogin = async () => {
   return { user: guestUser, tokens };
 };
 
+/**
+ * Check if email exists in the system
+ * @param {string} email
+ * @returns {Promise<Object>}
+ */
+const checkEmail = async (email) => {
+  const user = await getUserByEmail(email);
+  
+  if (user) {
+    return {
+      exists: true,
+      message: 'User already exists. Please login with your password.',
+    };
+  }
+  
+  return {
+    exists: false,
+    message: 'New user. Please proceed with registration.',
+  };
+};
+
+/**
+ * Send registration OTP for new users (before account creation)
+ * @param {string} email
+ * @returns {Promise<Object>}
+ */
+const sendRegistrationOTP = async (email) => {
+  // Check if user already exists
+  const existingUser = await getUserByEmail(email);
+  if (existingUser) {
+    throw new ApiError(httpStatus.CONFLICT, 'User already exists with this email');
+  }
+
+  // For registration, we'll use the existing OTP flow but with a temp user
+  // Create a temporary user record that will be completed in later steps
+  const tempUser = await createUser({
+    email,
+    password: 'TEMP_PASSWORD_' + Date.now(), // Temporary password
+    isEmailVerified: false,
+    registrationStatus: 'partial',
+  });
+
+  // Send OTP for email verification
+  await sendEmailOTP(email, 'email_verification');
+
+  return {
+    message: `OTP sent successfully to ${email}`,
+    tempUserId: tempUser.id,
+  };
+};
+
+/**
+ * Create password after OTP verification (OTP already verified in previous step)
+ * @param {Object} userData - email, password, role
+ * @returns {Promise<Object>}
+ */
+const createPassword = async (userData) => {
+  const { email, password, role = 'user' } = userData;
+  
+  // Find existing temp user
+  const existingUser = await getUserByEmail(email);
+  if (!existingUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found. Please complete OTP verification first.');
+  }
+  
+  // Check if registration is already completed
+  if (existingUser.registrationStatus === 'completed') {
+    throw new ApiError(httpStatus.CONFLICT, 'Registration already completed');
+  }
+  
+  // Check if OTP was verified
+  if (!existingUser.isOtpVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Please verify OTP first');
+  }
+  
+  // Update user with new password and role
+  // This is idempotent - calling it multiple times will just update the password
+  await updateUserById(existingUser.id, {
+    password,
+    role,
+    registrationStatus: 'otp_verified',
+  });
+  
+  // Get updated user
+  const updatedUser = await getUserById(existingUser.id);
+  
+  return {
+    message: 'Password created successfully',
+    userId: updatedUser.id,
+    email: updatedUser.email,
+    role: updatedUser.role,
+  };
+};
+
 export {
   loginUserWithEmailAndPassword,
   logout,
@@ -392,5 +486,8 @@ export {
   verifyForgotPasswordOTP,
   resetPasswordWithVerifiedOTP,
   guestLogin,
+  checkEmail,
+  sendRegistrationOTP,
+  createPassword,
 };
 

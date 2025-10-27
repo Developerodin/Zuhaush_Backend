@@ -15,7 +15,7 @@ router
 
 router
   .route('/:builderId')
-  .get(flexibleAuth('getBuilders'), validate(builderValidation.getBuilder), builderController.getBuilder)
+  .get(flexibleAuth(), validate(builderValidation.getBuilder), builderController.getBuilder)
   .patch(flexibleAuth('manageBuilders'), validate(builderValidation.updateBuilder), builderController.updateBuilder)
   .delete(flexibleAuth('manageBuilders'), validate(builderValidation.deleteBuilder), builderController.deleteBuilder);
 

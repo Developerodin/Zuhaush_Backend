@@ -117,6 +117,14 @@ const updateBuilderById = async (builderId, updateBody) => {
   if (updateBody.email && (await Builder.isEmailTaken(updateBody.email, builderId))) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
   }
+  
+  // If password is being updated, handle it separately to ensure proper hashing
+  if (updateBody.password) {
+    builder.password = updateBody.password;
+    builder.markModified('password');
+    delete updateBody.password;
+  }
+  
   Object.assign(builder, updateBody);
   await builder.save();
   return builder;

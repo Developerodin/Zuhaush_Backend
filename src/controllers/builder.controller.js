@@ -233,6 +233,9 @@ const sendOTP = catchAsync(async (req, res) => {
   } else if (type === 'password_reset') {
     const { sendPasswordResetOTP } = await import('../services/otp.service.js');
     result = await sendPasswordResetOTP(email);
+  } else if (type === 'registration') {
+    // Handle registration OTP with temp builder creation
+    result = await builderService.sendBuilderRegistrationOTP(email);
   } else {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid OTP type');
   }
@@ -242,8 +245,26 @@ const sendOTP = catchAsync(async (req, res) => {
 
 const verifyOTP = catchAsync(async (req, res) => {
   const { email, otp, type } = req.body;
-  const { verifyOTP: verifyOTPService } = await import('../services/otp.service.js');
-  const result = await verifyOTPService(email, otp, type);
+  let result;
+  
+  if (type === 'registration') {
+    // For registration, verify email_verification type since that's what temp builder created
+    const { verifyOTP: verifyOTPService } = await import('../services/otp.service.js');
+    result = await verifyOTPService(email, otp, 'email_verification', true, 'builder');
+    
+    // Mark builder as OTP verified for registration flow
+    const builder = await builderService.getBuilderByEmail(email);
+    if (builder) {
+      await builderService.updateBuilderById(builder.id, { 
+        isOtpVerified: true,
+        registrationStatus: 'otp_verified'
+      });
+    }
+  } else {
+    const { verifyOTP: verifyOTPService } = await import('../services/otp.service.js');
+    result = await verifyOTPService(email, otp, type, true, 'builder');
+  }
+  
   res.send(result);
 });
 
@@ -392,6 +413,19 @@ const getBuilderDocuments = catchAsync(async (req, res) => {
   });
 });
 
+// New 4-layer registration flow controllers
+const checkEmail = catchAsync(async (req, res) => {
+  const { email } = req.body;
+  const result = await builderService.checkBuilderEmail(email);
+  res.status(httpStatus.OK).json(result);
+});
+
+const createPassword = catchAsync(async (req, res) => {
+  const { email, password, role } = req.body;
+  const result = await builderService.createBuilderPassword({ email, password, role });
+  res.status(httpStatus.CREATED).json(result);
+});
+
 export {
   // Basic CRUD
   createBuilder,
@@ -448,4 +482,8 @@ export {
   uploadDocumentFields,
   removeDocument,
   getBuilderDocuments,
+  
+  // New 4-layer registration flow
+  checkEmail,
+  createPassword,
 };

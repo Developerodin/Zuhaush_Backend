@@ -620,6 +620,101 @@ const getBuilderStats = async () => {
   };
 };
 
+/**
+ * Check if builder email exists in the system
+ * @param {string} email
+ * @returns {Promise<Object>}
+ */
+const checkBuilderEmail = async (email) => {
+  const builder = await getBuilderByEmail(email);
+  
+  if (builder) {
+    return {
+      exists: true,
+      message: 'Builder already exists. Please login with your password.',
+    };
+  }
+  
+  return {
+    exists: false,
+    message: 'New builder. Please proceed with registration.',
+  };
+};
+
+/**
+ * Send registration OTP for new builders (before account creation)
+ * @param {string} email
+ * @returns {Promise<Object>}
+ */
+const sendBuilderRegistrationOTP = async (email) => {
+  // Check if builder already exists
+  const existingBuilder = await getBuilderByEmail(email);
+  if (existingBuilder) {
+    throw new ApiError(httpStatus.CONFLICT, 'Builder already exists with this email');
+  }
+
+  // For registration, we'll use the existing OTP flow but with a temp builder
+  // Create a temporary builder record that will be completed in later steps
+  const tempBuilder = await createBuilder({
+    email,
+    password: 'TEMP_PASSWORD_' + Date.now(), // Temporary password
+    name: email.split('@')[0], // Default name
+    isEmailVerified: false,
+    registrationStatus: 'partial',
+  });
+
+  // Send OTP for email verification (pass 'builder' as userType)
+  await sendEmailVerificationOTP(email, 'builder');
+
+  return {
+    message: 'OTP sent to your email',
+    tempBuilderId: tempBuilder.id,
+  };
+};
+
+/**
+ * Create password after OTP verification (OTP already verified in previous step)
+ * @param {Object} builderData - email, password, role
+ * @returns {Promise<Object>}
+ */
+const createBuilderPassword = async (builderData) => {
+  const { email, password, role = 'builder' } = builderData;
+  
+  // Find existing temp builder
+  const existingBuilder = await getBuilderByEmail(email);
+  if (!existingBuilder) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found. Please complete OTP verification first.');
+  }
+  
+  // Check if registration is already completed
+  if (existingBuilder.registrationStatus === 'completed') {
+    throw new ApiError(httpStatus.CONFLICT, 'Registration already completed');
+  }
+  
+  // Check if OTP was verified
+  if (!existingBuilder.isOtpVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Please verify OTP first');
+  }
+  
+  // Update builder with new password and role
+  // This is idempotent - calling it multiple times will just update the password
+  await updateBuilderById(existingBuilder.id, {
+    password,
+    role,
+    registrationStatus: 'otp_verified',
+  });
+  
+  // Get updated builder
+  const updatedBuilder = await getBuilderById(existingBuilder.id);
+  
+  return {
+    message: 'Password created successfully',
+    builderId: updatedBuilder.id,
+    email: updatedBuilder.email,
+    role: updatedBuilder.role,
+  };
+};
+
 export {
   createBuilder,
   queryBuilders,
@@ -651,5 +746,8 @@ export {
   deactivateBuilder,
   activateBuilder,
   getBuilderStats,
+  checkBuilderEmail,
+  sendBuilderRegistrationOTP,
+  createBuilderPassword,
 };
 

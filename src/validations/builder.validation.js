@@ -148,7 +148,7 @@ const register = {
 const sendOTP = {
   body: Joi.object().keys({
     email: Joi.string().required().email(),
-    type: Joi.string().valid('email_verification', 'password_reset').required(),
+    type: Joi.string().valid('email_verification', 'password_reset', 'registration').required(),
   }),
 };
 
@@ -156,7 +156,7 @@ const verifyOTP = {
   body: Joi.object().keys({
     email: Joi.string().required().email(),
     otp: Joi.string().length(6).pattern(/^\d+$/).required(),
-    type: Joi.string().valid('email_verification', 'password_reset').required(),
+    type: Joi.string().valid('email_verification', 'password_reset', 'registration').required(),
   }),
 };
 
@@ -388,6 +388,21 @@ const uploadDocumentFields = {
   }),
 };
 
+// New 4-layer registration flow validations
+const checkEmail = {
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+  }),
+};
+
+const createPassword = {
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+    password: Joi.string().required().custom(password),
+    role: Joi.string().valid('builder').optional().default('builder'),
+  }),
+};
+
 export { 
   createBuilder, 
   getBuilders, 
@@ -418,5 +433,7 @@ export {
   uploadSingleDocument,
   uploadMultipleDocuments,
   uploadDocumentFields,
+  checkEmail,
+  createPassword,
 };
 

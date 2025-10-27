@@ -23,6 +23,10 @@ router
 router.post('/login', validate(builderValidation.login), builderController.login);
 router.post('/register', validate(builderValidation.register), builderController.register);
 
+// New 4-layer registration flow
+router.post('/check-email', validate(builderValidation.checkEmail), builderController.checkEmail);
+router.post('/create-password', validate(builderValidation.createPassword), builderController.createPassword);
+
 // OTP-based registration flow
 router.post('/register-with-otp', validate(builderValidation.registerWithPasswordAndSendOTP), builderController.registerWithOTP);
 router.post('/verify-registration-otp', validate(builderValidation.verifyRegistrationOTP), builderController.verifyRegistrationOTP);

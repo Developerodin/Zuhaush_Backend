@@ -68,7 +68,7 @@ If you did not create an account, then ignore this email.`;
  * @returns {Promise}
  */
 const sendEmailOtp = async (to, otp, name = 'User') => {
-  const subject = 'Your Verification OTP - Zuhaush';
+  const subject = 'Your Verification OTP - Zuhouze';
   const text = `Dear ${name},
 
 Your One-Time Password (OTP) is: ${otp}
@@ -78,12 +78,12 @@ This OTP is valid for 10 minutes. Please do not share this OTP with anyone.
 If you didn't request this OTP, please ignore this email.
 
 Best regards,
-Zuhaush Team`;
+Zuhouze Team`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #2c3e50; margin: 0;">Zuhaush</h1>
+        <h1 style="color: #2c3e50; margin: 0;">Zuhouze</h1>
         <p style="color: #7f8c8d; margin: 5px 0 0 0;">Real Estate Platform</p>
       </div>
       
@@ -100,7 +100,7 @@ Zuhaush Team`;
       
       <div style="text-align: center; margin-top: 30px; padding: 20px; background-color: #ecf0f1; border-radius: 8px;">
         <p style="color: #7f8c8d; margin: 0; font-size: 14px;">If you didn't request this OTP, please ignore this email.</p>
-        <p style="color: #7f8c8d; margin: 10px 0 0 0; font-size: 14px;">Best regards,<br>Zuhaush Team</p>
+        <p style="color: #7f8c8d; margin: 10px 0 0 0; font-size: 14px;">Best regards,<br>Zuhouze Team</p>
       </div>
     </div>
   `;
@@ -116,7 +116,7 @@ Zuhaush Team`;
  * @returns {Promise}
  */
 const sendPasswordResetOtp = async (to, otp, name = 'User') => {
-  const subject = 'Password Reset OTP - Zuhaush';
+  const subject = 'Password Reset OTP - Zuhouze';
   const text = `Dear ${name},
 
 Your password reset OTP is: ${otp}
@@ -126,12 +126,12 @@ This OTP is valid for 10 minutes. Please do not share this OTP with anyone.
 If you didn't request a password reset, please ignore this email.
 
 Best regards,
-Zuhaush Team`;
+Zuhouze Team`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #2c3e50; margin: 0;">Zuhaush</h1>
+        <h1 style="color: #2c3e50; margin: 0;">Zuhouze</h1>
         <p style="color: #7f8c8d; margin: 5px 0 0 0;">Real Estate Platform</p>
       </div>
       
@@ -148,7 +148,7 @@ Zuhaush Team`;
       
       <div style="text-align: center; margin-top: 30px; padding: 20px; background-color: #ecf0f1; border-radius: 8px;">
         <p style="color: #7f8c8d; margin: 0; font-size: 14px;">If you didn't request a password reset, please ignore this email.</p>
-        <p style="color: #7f8c8d; margin: 10px 0 0 0; font-size: 14px;">Best regards,<br>Zuhaush Team</p>
+        <p style="color: #7f8c8d; margin: 10px 0 0 0; font-size: 14px;">Best regards,<br>Zuhouze Team</p>
       </div>
     </div>
   `;

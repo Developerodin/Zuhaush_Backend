@@ -6,9 +6,12 @@ import { sendMessage, getMessageHistory, getUserMessages } from '../services/cha
  * Send a message
  */
 const sendMessageHandler = catchAsync(async (req, res) => {
-  const { userId, builderId, message, senderType } = req.body;
+  const { userId, builderId, agentId, message, senderType } = req.body;
 
-  const newMessage = await sendMessage(userId, builderId, message, senderType);
+  // Use builderId or agentId as the second participant
+  const secondParticipantId = builderId || agentId;
+
+  const newMessage = await sendMessage(userId, secondParticipantId, message, senderType);
 
   res.status(httpStatus.CREATED).json({
     success: true,
@@ -18,13 +21,16 @@ const sendMessageHandler = catchAsync(async (req, res) => {
 });
 
 /**
- * Get message history between user and builder
+ * Get message history between user and builder/agent
  */
 const getMessageHistoryHandler = catchAsync(async (req, res) => {
-  const { userId, builderId } = req.query;
+  const { userId, builderId, agentId } = req.query;
   const { page = 1, limit = 50 } = req.query;
 
-  const result = await getMessageHistory(userId, builderId, {
+  // Use builderId or agentId as the second participant
+  const secondParticipantId = builderId || agentId;
+
+  const result = await getMessageHistory(userId, secondParticipantId, {
     page: parseInt(page, 10),
     limit: parseInt(limit, 10),
   });

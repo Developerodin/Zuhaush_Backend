@@ -2,6 +2,7 @@ import express from 'express';
 import authRoute from './auth.route.js';
 import userRoute from './user.route.js';
 import builderRoute from './builder.route.js';
+import agentRoute from './agent.route.js';
 import propertyRoute from './property.route.js';
 import adminRoute from './admin.route.js';
 import visitRoute from './visit.route.js';
@@ -28,6 +29,10 @@ const defaultRoutes = [
   {
     path: '/builders',
     route: builderRoute,
+  },
+  {
+    path: '/agents',
+    route: agentRoute,
   },
   {
     path: '/properties',

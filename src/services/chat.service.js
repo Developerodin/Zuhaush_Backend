@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import httpStatus from 'http-status';
+import ApiError from '../utils/ApiError.js';
 import { Message } from '../models/chat.model.js';
 import User from '../models/user.model.js';
 
@@ -22,6 +24,28 @@ const isAgent = async (userId) => {
  * @returns {Promise<Message>}
  */
 const sendMessage = async (userId, builderId, message, senderType) => {
+  // Validate senderType matches actual role
+  const isUserIdAgent = await isAgent(userId);
+  const isBuilderIdAgent = await isAgent(builderId);
+  const Builder = (await import('../models/builder.model.js')).default;
+  const isBuilderIdBuilder = builderId ? await Builder.findById(builderId) : null;
+
+  // Validate senderType consistency
+  if (senderType === 'User' && isUserIdAgent) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'senderType cannot be "User" when userId is an agent. Use senderType "Agent" instead.');
+  }
+  if (senderType === 'Agent' && !isUserIdAgent) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'senderType cannot be "Agent" when userId is not an agent.');
+  }
+  if (senderType === 'Builder' && !isBuilderIdBuilder) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'senderType cannot be "Builder" when builderId is not a builder.');
+  }
+
+  // Prevent same person in multiple fields
+  if (userId === builderId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'userId and builderId cannot be the same person.');
+  }
+
   // Determine which fields to use based on senderType
   let messageData = {
     message,
@@ -31,16 +55,23 @@ const sendMessage = async (userId, builderId, message, senderType) => {
   if (senderType === 'User') {
     // User chatting with Builder or Agent
     messageData.userId = userId;
-    const isBuilderIdAgent = await isAgent(builderId);
     if (isBuilderIdAgent) {
       messageData.agentId = builderId;
-    } else {
+    } else if (isBuilderIdBuilder) {
       messageData.builderId = builderId;
+    } else {
+      // builderId is a regular user - this shouldn't happen but handle it
+      const user = await User.findById(builderId);
+      if (!user) {
+        throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid builderId/agentId provided.');
+      }
+      // For User↔User conversation, we need to handle this differently
+      // But based on the model, this should be User↔Agent or User↔Builder
+      throw new ApiError(httpStatus.BAD_REQUEST, 'User can only chat with Builder or Agent, not another User.');
     }
   } else if (senderType === 'Builder') {
     // Builder chatting with User or Agent
     messageData.builderId = builderId;
-    const isUserIdAgent = await isAgent(userId);
     if (isUserIdAgent) {
       messageData.agentId = userId;
     } else {
@@ -48,15 +79,26 @@ const sendMessage = async (userId, builderId, message, senderType) => {
     }
   } else if (senderType === 'Agent') {
     // Agent chatting with User or Builder
+    if (!isUserIdAgent) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'userId must be an agent when senderType is "Agent".');
+    }
     messageData.agentId = userId; // Agent is passed as userId
-    // Check if builderId is actually a Builder or a User
-    const Builder = (await import('../models/builder.model.js')).default;
-    const builder = await Builder.findById(builderId);
-    if (builder) {
+    
+    if (isBuilderIdBuilder) {
       // builderId is a Builder
       messageData.builderId = builderId;
+    } else if (isBuilderIdAgent) {
+      // builderId is also an Agent - Agent↔Agent conversation
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Agent↔Agent conversations are not currently supported.');
     } else {
-      // builderId is actually a User (for User↔Agent conversation)
+      // builderId should be a User (for User↔Agent conversation)
+      const user = await User.findById(builderId);
+      if (!user) {
+        throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid recipient ID provided.');
+      }
+      if (user.role === 'agent') {
+        throw new ApiError(httpStatus.BAD_REQUEST, 'Agent↔Agent conversations are not currently supported.');
+      }
       messageData.userId = builderId;
     }
   }

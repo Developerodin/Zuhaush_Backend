@@ -596,13 +596,15 @@ const getPropertiesByCity = catchAsync(async (req, res) => {
  * Add property to shortlist
  * @param {Object} req
  * @param {Object} res
- * @returns {Promise<User>}
+ * @returns {Promise<User|Builder>}
  */
 const addToShortlistHandler = catchAsync(async (req, res) => {
-  const user = await addToShortlist(req.user.id, req.params.propertyId);
+  // Detect if user is a Builder or User
+  const userType = req.user.constructor.modelName === 'Builder' ? 'builder' : 'user';
+  const entity = await addToShortlist(req.user.id, req.params.propertyId, userType);
   res.status(httpStatus.OK).send({
     message: 'Property added to shortlist successfully',
-    shortlistedProperties: user.shortlistProperties,
+    shortlistedProperties: entity.shortlistProperties,
   });
 });
 
@@ -610,36 +612,42 @@ const addToShortlistHandler = catchAsync(async (req, res) => {
  * Remove property from shortlist
  * @param {Object} req
  * @param {Object} res
- * @returns {Promise<User>}
+ * @returns {Promise<User|Builder>}
  */
 const removeFromShortlistHandler = catchAsync(async (req, res) => {
-  const user = await removeFromShortlist(req.user.id, req.params.propertyId);
+  // Detect if user is a Builder or User
+  const userType = req.user.constructor.modelName === 'Builder' ? 'builder' : 'user';
+  const entity = await removeFromShortlist(req.user.id, req.params.propertyId, userType);
   res.status(httpStatus.OK).send({
     message: 'Property removed from shortlist successfully',
-    shortlistedProperties: user.shortlistProperties,
+    shortlistedProperties: entity.shortlistProperties,
   });
 });
 
 /**
- * Get user's shortlisted properties
+ * Get user's or builder's shortlisted properties
  * @param {Object} req
  * @param {Object} res
  * @returns {Promise<QueryResult>}
  */
 const getShortlistedPropertiesHandler = catchAsync(async (req, res) => {
+  // Detect if user is a Builder or User
+  const userType = req.user.constructor.modelName === 'Builder' ? 'builder' : 'user';
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
-  const result = await getShortlistedProperties(req.user.id, options);
+  const result = await getShortlistedProperties(req.user.id, options, userType);
   res.send(result);
 });
 
 /**
- * Check if property is in user's shortlist
+ * Check if property is in user's or builder's shortlist
  * @param {Object} req
  * @param {Object} res
  * @returns {Promise<Object>}
  */
 const checkShortlistStatusHandler = catchAsync(async (req, res) => {
-  const isShortlisted = await checkShortlistStatus(req.user.id, req.params.propertyId);
+  // Detect if user is a Builder or User
+  const userType = req.user.constructor.modelName === 'Builder' ? 'builder' : 'user';
+  const isShortlisted = await checkShortlistStatus(req.user.id, req.params.propertyId, userType);
   res.send({ isShortlisted });
 });
 

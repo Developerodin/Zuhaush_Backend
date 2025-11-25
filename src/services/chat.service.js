@@ -1,39 +1,107 @@
 import mongoose from 'mongoose';
 import { Message } from '../models/chat.model.js';
+import User from '../models/user.model.js';
+
+/**
+ * Helper function to check if a user is an agent
+ * @param {string} userId - User ID to check
+ * @returns {Promise<boolean>}
+ */
+const isAgent = async (userId) => {
+  if (!userId) return false;
+  const user = await User.findById(userId);
+  return user && user.role === 'agent';
+};
 
 /**
  * Send a message
- * @param {string} userId - User ID
- * @param {string} builderId - Builder ID
+ * @param {string} userId - User ID (can be User or Agent)
+ * @param {string} builderId - Builder ID (can be Builder or Agent when agentId is used)
  * @param {string} message - Message content
- * @param {string} senderType - Sender type ('User' or 'Builder')
+ * @param {string} senderType - Sender type ('User', 'Builder', or 'Agent')
  * @returns {Promise<Message>}
  */
 const sendMessage = async (userId, builderId, message, senderType) => {
-  const newMessage = await Message.create({
-    userId,
-    builderId,
+  // Determine which fields to use based on senderType
+  let messageData = {
     message,
     senderType,
-  });
+  };
 
-  const populatedMessage = await newMessage.populate('userId', 'name email').populate('builderId', 'name email');
+  if (senderType === 'User') {
+    // User chatting with Builder or Agent
+    messageData.userId = userId;
+    const isBuilderIdAgent = await isAgent(builderId);
+    if (isBuilderIdAgent) {
+      messageData.agentId = builderId;
+    } else {
+      messageData.builderId = builderId;
+    }
+  } else if (senderType === 'Builder') {
+    // Builder chatting with User or Agent
+    messageData.builderId = builderId;
+    const isUserIdAgent = await isAgent(userId);
+    if (isUserIdAgent) {
+      messageData.agentId = userId;
+    } else {
+      messageData.userId = userId;
+    }
+  } else if (senderType === 'Agent') {
+    // Agent chatting with User or Builder
+    messageData.agentId = userId; // Agent is passed as userId
+    // Check if builderId is actually a Builder or a User
+    const Builder = (await import('../models/builder.model.js')).default;
+    const builder = await Builder.findById(builderId);
+    if (builder) {
+      // builderId is a Builder
+      messageData.builderId = builderId;
+    } else {
+      // builderId is actually a User (for User↔Agent conversation)
+      messageData.userId = builderId;
+    }
+  }
+
+  const newMessage = await Message.create(messageData);
+
+  // Populate all possible fields
+  const populatedMessage = await newMessage
+    .populate('userId', 'name email role')
+    .populate('builderId', 'name email')
+    .populate('agentId', 'name email role');
 
   // Create notification for the recipient
   try {
     const { createChatNotifications } = await import('./notification.service.js');
     
     // Determine recipient type and ID
-    const recipientType = senderType === 'User' ? 'builder' : 'user';
-    const recipientId = senderType === 'User' ? builderId : userId;
-    const senderId = senderType === 'User' ? userId : builderId;
+    let recipientType, recipientId, senderId;
+    
+    if (senderType === 'User') {
+      senderId = userId;
+      const isBuilderIdAgent = await isAgent(builderId);
+      recipientId = builderId;
+      recipientType = isBuilderIdAgent ? 'agent' : 'builder';
+    } else if (senderType === 'Builder') {
+      senderId = builderId;
+      const isUserIdAgent = await isAgent(userId);
+      recipientId = userId;
+      recipientType = isUserIdAgent ? 'agent' : 'user';
+    } else if (senderType === 'Agent') {
+      senderId = userId; // Agent ID
+      recipientId = builderId;
+      // Check if builderId is a Builder or User
+      const Builder = (await import('../models/builder.model.js')).default;
+      const builder = await Builder.findById(builderId);
+      recipientType = builder ? 'builder' : 'user';
+    }
     
     await createChatNotifications({
       message: populatedMessage,
       action: 'new_message',
       senderId,
       recipientId,
-      recipientType
+      recipientType,
+      senderType
     });
   } catch (error) {
     console.error('Failed to create chat notification:', error);
@@ -44,17 +112,32 @@ const sendMessage = async (userId, builderId, message, senderType) => {
 };
 
 /**
- * Get message history between user and builder
- * @param {string} userId - User ID
- * @param {string} builderId - Builder ID
+ * Get message history between participants
+ * @param {string} userId - User ID (can be User or Agent)
+ * @param {string} builderId - Builder ID (can be Builder or Agent/User)
  * @param {Object} options - Query options
  * @returns {Promise<Object>}
  */
 const getMessageHistory = async (userId, builderId, options = {}) => {
+  // Check if participants are agents to build correct filter
+  const isUserIdAgent = await isAgent(userId);
+  const isBuilderIdAgent = await isAgent(builderId);
+  
+  // Build filter to match all possible conversation combinations
   const filter = {
     $or: [
+      // User ↔ Builder (existing)
       { userId, builderId },
       { userId: builderId, builderId: userId },
+      // User ↔ Agent
+      { userId, agentId: builderId },
+      { userId: builderId, agentId: userId },
+      // Agent ↔ Builder
+      { agentId: userId, builderId },
+      { agentId: builderId, builderId: userId },
+      // Agent ↔ Agent (if both are agents)
+      { agentId: userId, userId: builderId },
+      { agentId: builderId, userId: userId },
     ],
   };
 
@@ -65,8 +148,9 @@ const getMessageHistory = async (userId, builderId, options = {}) => {
 
   // Get messages
   const messages = await Message.find(filter)
-    .populate('userId', 'name email')
+    .populate('userId', 'name email role')
     .populate('builderId', 'name email')
+    .populate('agentId', 'name email role')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
@@ -83,8 +167,8 @@ const getMessageHistory = async (userId, builderId, options = {}) => {
 };
 
 /**
- * Get all messages for a user (receive messages) - Returns only latest message per conversation
- * @param {string} userId - User ID
+ * Get all messages for a user/agent/builder - Returns only latest message per conversation
+ * @param {string} userId - User/Agent/Builder ID
  * @param {Object} options - Query options
  * @returns {Promise<Object>}
  */
@@ -97,10 +181,15 @@ const getUserMessages = async (userId, options = {}) => {
   const skip = (page - 1) * limit;
 
   // Use aggregation to get only the latest message per unique conversation
+  // Match messages where the user appears in any participant field
   const messages = await Message.aggregate([
     {
       $match: {
-        $or: [{ userId: userObjectId }, { builderId: userObjectId }],
+        $or: [
+          { userId: userObjectId },
+          { builderId: userObjectId },
+          { agentId: userObjectId },
+        ],
       },
     },
     {
@@ -108,12 +197,15 @@ const getUserMessages = async (userId, options = {}) => {
     },
     {
       $addFields: {
+        // Create a unique conversation key from all participant IDs
         conversationKey: {
-          $cond: {
-            if: { $lt: [{ $toString: '$userId' }, { $toString: '$builderId' }] },
-            then: { $concat: [{ $toString: '$userId' }, '-', { $toString: '$builderId' }] },
-            else: { $concat: [{ $toString: '$builderId' }, '-', { $toString: '$userId' }] },
-          },
+          $concat: [
+            { $toString: { $ifNull: ['$userId', ''] } },
+            '-',
+            { $toString: { $ifNull: ['$builderId', ''] } },
+            '-',
+            { $toString: { $ifNull: ['$agentId', ''] } },
+          ],
         },
       },
     },
@@ -137,11 +229,12 @@ const getUserMessages = async (userId, options = {}) => {
     },
   ]);
 
-  // Populate user and builder details
+  // Populate all participant fields
   const result = messages[0];
   const populatedMessages = await Message.populate(result.messages, [
-    { path: 'userId', select: 'name email' },
+    { path: 'userId', select: 'name email role' },
     { path: 'builderId', select: 'name email' },
+    { path: 'agentId', select: 'name email role' },
   ]);
 
   const total = result.totalCount[0]?.count || 0;

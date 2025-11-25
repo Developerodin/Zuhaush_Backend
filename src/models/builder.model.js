@@ -294,6 +294,13 @@ const builderSchema = mongoose.Schema(
     lastLoginAt: {
       type: Date,
     },
+    // Shortlisted properties
+    shortlistProperties: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Property',
+      },
+    ],
   },
   {
     timestamps: true,
@@ -558,6 +565,40 @@ builderSchema.methods.teamMemberHasPermission = function (memberId, permission) 
   }
   
   return member.navigationPermissions[permission] === true;
+};
+
+/**
+ * Add property to shortlist
+ * @param {string} propertyId - Property ID to add to shortlist
+ * @returns {Promise<Builder>}
+ */
+builderSchema.methods.addToShortlist = function (propertyId) {
+  const builder = this;
+  if (!builder.shortlistProperties.includes(propertyId)) {
+    builder.shortlistProperties.push(propertyId);
+  }
+  return builder.save();
+};
+
+/**
+ * Remove property from shortlist
+ * @param {string} propertyId - Property ID to remove from shortlist
+ * @returns {Promise<Builder>}
+ */
+builderSchema.methods.removeFromShortlist = function (propertyId) {
+  const builder = this;
+  builder.shortlistProperties = builder.shortlistProperties.filter((id) => id.toString() !== propertyId.toString());
+  return builder.save();
+};
+
+/**
+ * Check if property is in shortlist
+ * @param {string} propertyId - Property ID to check
+ * @returns {boolean}
+ */
+builderSchema.methods.isPropertyShortlisted = function (propertyId) {
+  const builder = this;
+  return builder.shortlistProperties.some((id) => id.toString() === propertyId.toString());
 };
 
 // Hash password before saving

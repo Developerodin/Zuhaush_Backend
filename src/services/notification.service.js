@@ -423,47 +423,61 @@ const createVisitNotifications = async (data) => {
  * @returns {Promise<Array>}
  */
 const createChatNotifications = async (data) => {
-  const { message, action, senderId, recipientId, recipientType, additionalData = {} } = data;
+  const { message, action, senderId, recipientId, recipientType, senderType, additionalData = {} } = data;
   
   const notifications = [];
 
   switch (action) {
     case 'new_message':
+      // Determine notification type based on recipient and sender
+      let notificationType;
+      if (recipientType === 'user') {
+        notificationType = senderType === 'Agent' ? 'agent_message' : 'builder_message';
+      } else if (recipientType === 'agent') {
+        notificationType = senderType === 'User' ? 'user_inquiry' : 'builder_message';
+      } else {
+        notificationType = 'user_inquiry';
+      }
+
+      // Get message content (handle both message.message and message.content)
+      const messageContent = message.message || message.content || '';
+      
       notifications.push({
         title: 'New Message',
-        description: `You have a new message: "${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}"`,
+        description: `You have a new message: "${messageContent.substring(0, 50)}${messageContent.length > 50 ? '...' : ''}"`,
         recipientType,
         recipientId,
-        notificationType: recipientType === 'user' ? 'builder_message' : 'user_inquiry',
+        notificationType,
         priority: 'medium',
         actionData: {
           type: 'reply_message',
-          url: `/chat/${message.chatId}`,
-          metadata: { chatId: message.chatId, messageId: message._id }
+          url: `/chat/${message.chatId || message._id}`,
+          metadata: { chatId: message.chatId || message._id, messageId: message._id }
         },
-        senderType: recipientType === 'user' ? 'builder' : 'user',
+        senderType: senderType ? senderType.toLowerCase() : (recipientType === 'user' ? 'builder' : 'user'),
         senderId,
-        metadata: { chatId: message.chatId, messageId: message._id }
+        metadata: { chatId: message.chatId || message._id, messageId: message._id }
       });
       break;
 
     case 'chat_initiated':
-      if (recipientType === 'builder') {
+      if (recipientType === 'builder' || recipientType === 'agent') {
+        const senderLabel = senderType === 'Agent' ? 'An agent' : 'A user';
         notifications.push({
           title: 'New Chat Started',
-          description: `A user has started a conversation with you`,
+          description: `${senderLabel} has started a conversation with you`,
           recipientType,
           recipientId,
           notificationType: 'user_inquiry',
           priority: 'medium',
           actionData: {
             type: 'reply_message',
-            url: `/chat/${message.chatId}`,
-            metadata: { chatId: message.chatId }
+            url: `/chat/${message.chatId || message._id}`,
+            metadata: { chatId: message.chatId || message._id }
           },
-          senderType: 'user',
+          senderType: senderType ? senderType.toLowerCase() : 'user',
           senderId,
-          metadata: { chatId: message.chatId }
+          metadata: { chatId: message.chatId || message._id }
         });
       }
       break;

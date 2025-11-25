@@ -1,4 +1,4 @@
-import { Property, User } from '../models/index.js';
+import { Property, User, Builder } from '../models/index.js';
 import ApiError from '../utils/ApiError.js';
 import httpStatus from 'http-status';
 import mongoose from 'mongoose';
@@ -486,12 +486,13 @@ const getPropertyStats = async (builderId, agentId = null) => {
 };
 
 /**
- * Add property to user's shortlist
- * @param {ObjectId} userId
+ * Add property to user's or builder's shortlist
+ * @param {ObjectId} userIdOrBuilderId - User ID or Builder ID
  * @param {ObjectId} propertyId
- * @returns {Promise<User>}
+ * @param {string} userType - 'user' or 'builder'
+ * @returns {Promise<User|Builder>}
  */
-const addToShortlist = async (userId, propertyId) => {
+const addToShortlist = async (userIdOrBuilderId, propertyId, userType = 'user') => {
   // Check if property exists
   const property = await Property.findById(propertyId)
     .populate('builder', 'name email phone')
@@ -500,42 +501,55 @@ const addToShortlist = async (userId, propertyId) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
   }
 
-  // Check if user exists
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  let entity;
+  let entityType;
+
+  // Check if user or builder exists
+  if (userType === 'builder') {
+    entity = await Builder.findById(userIdOrBuilderId);
+    entityType = 'builder';
+    if (!entity) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found');
+    }
+  } else {
+    entity = await User.findById(userIdOrBuilderId);
+    entityType = 'user';
+    if (!entity) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+    }
   }
 
   // Check if property is already in shortlist
-  if (user.isPropertyShortlisted(propertyId)) {
+  if (entity.isPropertyShortlisted(propertyId)) {
     throw new ApiError(httpStatus.CONFLICT, 'Property already in shortlist');
   }
 
-  const updatedUser = await user.addToShortlist(propertyId);
+  const updatedEntity = await entity.addToShortlist(propertyId);
 
-  // Create notifications for both builder and user
+  // Create notifications
   try {
     const { createPropertyNotifications, createSystemNotifications } = await import('./notification.service.js');
     
-    // Notification for builder or agent
+    // Notification for property owner (builder or agent)
     const recipientId = property.builder?._id || property.agent?._id;
     const recipientType = property.builder ? 'builder' : 'agent';
     await createPropertyNotifications({
       property,
       action: 'property_shortlisted',
-      userId,
-      builderId: property.builder?._id,
+      userId: entityType === 'user' ? userIdOrBuilderId : undefined,
+      builderId: entityType === 'builder' ? userIdOrBuilderId : undefined,
+      propertyBuilderId: property.builder?._id,
       agentId: property.agent?._id,
       recipientType,
       recipientId
     });
     
-    // Notification for user
+    // Notification for the user or builder who shortlisted
     await createSystemNotifications({
       title: 'Property Added to Shortlist',
-      description: `You have successfully added "${property.title}" to your shortlist`,
-      recipientType: 'user',
-      recipientId: userId,
+      description: `You have successfully added "${property.name}" to your shortlist`,
+      recipientType: entityType,
+      recipientId: userIdOrBuilderId,
       notificationType: 'property_shortlisted',
       priority: 'medium',
       actionData: {
@@ -543,53 +557,74 @@ const addToShortlist = async (userId, propertyId) => {
         url: `/properties/${property._id}`,
         metadata: { propertyId: property._id }
       },
-      metadata: { propertyId: property._id, propertyTitle: property.title }
+      metadata: { propertyId: property._id, propertyTitle: property.name }
     });
   } catch (error) {
     console.error('Failed to create shortlist notifications:', error);
     // Don't throw error - notification failure shouldn't break the main operation
   }
 
-  return updatedUser;
+  return updatedEntity;
 };
 
 /**
- * Remove property from user's shortlist
- * @param {ObjectId} userId
+ * Remove property from user's or builder's shortlist
+ * @param {ObjectId} userIdOrBuilderId - User ID or Builder ID
  * @param {ObjectId} propertyId
- * @returns {Promise<User>}
+ * @param {string} userType - 'user' or 'builder'
+ * @returns {Promise<User|Builder>}
  */
-const removeFromShortlist = async (userId, propertyId) => {
-  // Check if user exists
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+const removeFromShortlist = async (userIdOrBuilderId, propertyId, userType = 'user') => {
+  let entity;
+
+  // Check if user or builder exists
+  if (userType === 'builder') {
+    entity = await Builder.findById(userIdOrBuilderId);
+    if (!entity) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found');
+    }
+  } else {
+    entity = await User.findById(userIdOrBuilderId);
+    if (!entity) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+    }
   }
 
   // Check if property is in shortlist
-  if (!user.isPropertyShortlisted(propertyId)) {
+  if (!entity.isPropertyShortlisted(propertyId)) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Property not found in shortlist');
   }
 
-  return user.removeFromShortlist(propertyId);
+  return entity.removeFromShortlist(propertyId);
 };
 
 /**
- * Get user's shortlisted properties
- * @param {ObjectId} userId
+ * Get user's or builder's shortlisted properties
+ * @param {ObjectId} userIdOrBuilderId - User ID or Builder ID
  * @param {Object} options
+ * @param {string} userType - 'user' or 'builder'
  * @returns {Promise<QueryResult>}
  */
-const getShortlistedProperties = async (userId, options = {}) => {
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+const getShortlistedProperties = async (userIdOrBuilderId, options = {}, userType = 'user') => {
+  let entity;
+
+  // Check if user or builder exists
+  if (userType === 'builder') {
+    entity = await Builder.findById(userIdOrBuilderId);
+    if (!entity) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found');
+    }
+  } else {
+    entity = await User.findById(userIdOrBuilderId);
+    if (!entity) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+    }
   }
 
   // For shortlist, show all properties regardless of status or admin approval
-  // Users should be able to see their shortlisted properties even if they're draft or not approved
+  // Users/builders should be able to see their shortlisted properties even if they're draft or not approved
   const filter = {
-    _id: { $in: user.shortlistProperties },
+    _id: { $in: entity.shortlistProperties },
   };
 
   const defaultOptions = {
@@ -607,18 +642,29 @@ const getShortlistedProperties = async (userId, options = {}) => {
 };
 
 /**
- * Check if property is in user's shortlist
- * @param {ObjectId} userId
+ * Check if property is in user's or builder's shortlist
+ * @param {ObjectId} userIdOrBuilderId - User ID or Builder ID
  * @param {ObjectId} propertyId
+ * @param {string} userType - 'user' or 'builder'
  * @returns {Promise<boolean>}
  */
-const checkShortlistStatus = async (userId, propertyId) => {
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+const checkShortlistStatus = async (userIdOrBuilderId, propertyId, userType = 'user') => {
+  let entity;
+
+  // Check if user or builder exists
+  if (userType === 'builder') {
+    entity = await Builder.findById(userIdOrBuilderId);
+    if (!entity) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Builder not found');
+    }
+  } else {
+    entity = await User.findById(userIdOrBuilderId);
+    if (!entity) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+    }
   }
 
-  return user.isPropertyShortlisted(propertyId);
+  return entity.isPropertyShortlisted(propertyId);
 };
 
 export {

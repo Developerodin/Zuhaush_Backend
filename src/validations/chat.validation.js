@@ -5,7 +5,7 @@ const sendMessage = {
     userId: Joi.string().required(),
     builderId: Joi.string().required(),
     message: Joi.string().required().max(1000),
-    senderType: Joi.string().valid('User', 'Builder').required(),
+    senderType: Joi.string().valid('User', 'Builder', 'Agent').required(),
   }),
 };
 

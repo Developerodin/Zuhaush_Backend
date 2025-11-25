@@ -22,7 +22,14 @@ const createProperty = async (propertyBody) => {
  * @returns {Promise<QueryResult>}
  */
 const queryProperties = async (filter, options) => {
-  const properties = await Property.paginate(filter, options);
+  const defaultOptions = {
+    populate: [
+      { path: 'builder', select: 'name email phone' },
+      { path: 'agent', select: 'name email contactNumber' }
+    ],
+    ...options
+  };
+  const properties = await Property.paginate(filter, defaultOptions);
   return properties;
 };
 
@@ -32,7 +39,10 @@ const queryProperties = async (filter, options) => {
  * @returns {Promise<Property>}
  */
 const getPropertyById = async (id) => {
-  return Property.findById(id).populate('builder', 'name email phone').populate('approvedBy', 'name email');
+  return Property.findById(id)
+    .populate('builder', 'name email phone')
+    .populate('agent', 'name email contactNumber')
+    .populate('approvedBy', 'name email');
 };
 
 /**
@@ -41,7 +51,10 @@ const getPropertyById = async (id) => {
  * @returns {Promise<Property>}
  */
 const getPropertyBySlug = async (slug) => {
-  return Property.findOne({ 'seo.slug': slug }).populate('builder', 'name email phone').populate('approvedBy', 'name email');
+  return Property.findOne({ 'seo.slug': slug })
+    .populate('builder', 'name email phone')
+    .populate('agent', 'name email contactNumber')
+    .populate('approvedBy', 'name email');
 };
 
 /**
@@ -346,7 +359,10 @@ const searchProperties = async (searchParams) => {
     sort,
     limit: parseInt(limit),
     page: parseInt(page),
-    populate: 'builder',
+    populate: [
+      { path: 'builder', select: 'name email phone' },
+      { path: 'agent', select: 'name email contactNumber' }
+    ],
   };
 
   return Property.paginate(filter, options);
@@ -384,6 +400,7 @@ const getNearbyProperties = async (propertyId, radius = 5, limit = 10) => {
     },
   })
     .populate('builder', 'name email phone')
+    .populate('agent', 'name email contactNumber')
     .limit(limit)
     .sort({ createdAt: -1 });
 
@@ -398,17 +415,47 @@ const getNearbyProperties = async (propertyId, radius = 5, limit = 10) => {
  */
 const getPropertiesByBuilder = async (builderId, options = {}) => {
   const filter = { builder: builderId };
-  return Property.paginate(filter, options);
+  const defaultOptions = {
+    populate: [
+      { path: 'builder', select: 'name email phone' },
+      { path: 'agent', select: 'name email contactNumber' }
+    ],
+    ...options
+  };
+  return Property.paginate(filter, defaultOptions);
+};
+
+/**
+ * Get properties by agent
+ * @param {ObjectId} agentId
+ * @param {Object} options
+ * @returns {Promise<QueryResult>}
+ */
+const getPropertiesByAgent = async (agentId, options = {}) => {
+  const filter = { agent: agentId };
+  const defaultOptions = {
+    populate: [
+      { path: 'builder', select: 'name email phone' },
+      { path: 'agent', select: 'name email contactNumber' }
+    ],
+    ...options
+  };
+  return Property.paginate(filter, defaultOptions);
 };
 
 /**
  * Get property statistics
- * @param {ObjectId} builderId
+ * @param {ObjectId} builderId - Builder ID (optional, can be agent ID)
+ * @param {ObjectId} agentId - Agent ID (optional)
  * @returns {Promise<Object>}
  */
-const getPropertyStats = async (builderId) => {
+const getPropertyStats = async (builderId, agentId = null) => {
+  const matchFilter = agentId 
+    ? { agent: new mongoose.Types.ObjectId(agentId) }
+    : { builder: new mongoose.Types.ObjectId(builderId) };
+  
   const stats = await Property.aggregate([
-    { $match: { builder: new mongoose.Types.ObjectId(builderId) } },
+    { $match: matchFilter },
     {
       $group: {
         _id: null,
@@ -446,7 +493,9 @@ const getPropertyStats = async (builderId) => {
  */
 const addToShortlist = async (userId, propertyId) => {
   // Check if property exists
-  const property = await Property.findById(propertyId).populate('builder');
+  const property = await Property.findById(propertyId)
+    .populate('builder', 'name email phone')
+    .populate('agent', 'name email contactNumber');
   if (!property) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
   }
@@ -468,12 +517,17 @@ const addToShortlist = async (userId, propertyId) => {
   try {
     const { createPropertyNotifications, createSystemNotifications } = await import('./notification.service.js');
     
-    // Notification for builder
+    // Notification for builder or agent
+    const recipientId = property.builder?._id || property.agent?._id;
+    const recipientType = property.builder ? 'builder' : 'agent';
     await createPropertyNotifications({
       property,
       action: 'property_shortlisted',
       userId,
-      builderId: property.builder._id
+      builderId: property.builder?._id,
+      agentId: property.agent?._id,
+      recipientType,
+      recipientId
     });
     
     // Notification for user
@@ -542,7 +596,10 @@ const getShortlistedProperties = async (userId, options = {}) => {
     sortBy: 'createdAt:desc',
     limit: 10,
     page: 1,
-    populate: 'builder',
+    populate: [
+      { path: 'builder', select: 'name email phone' },
+      { path: 'agent', select: 'name email contactNumber' }
+    ],
     ...options,
   };
 
@@ -583,6 +640,7 @@ export {
   searchProperties,
   getNearbyProperties,
   getPropertiesByBuilder,
+  getPropertiesByAgent,
   getPropertyStats,
   addToShortlist,
   removeFromShortlist,

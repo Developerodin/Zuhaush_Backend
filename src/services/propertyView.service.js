@@ -1,4 +1,4 @@
-import { PropertyView, Property, User } from '../models/index.js';
+import { PropertyView, Property, User, Builder } from '../models/index.js';
 import ApiError from '../utils/ApiError.js';
 import httpStatus from 'http-status';
 
@@ -8,16 +8,16 @@ import httpStatus from 'http-status';
  * @returns {Promise<PropertyView>}
  */
 const createPropertyView = async (viewBody) => {
-  // Check if property exists
   const property = await Property.findById(viewBody.property);
   if (!property) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
   }
 
-  // Check if user exists
+  // Check if user or builder exists
   const user = await User.findById(viewBody.user);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  const builder = user ? null : await Builder.findById(viewBody.user);
+  if (!user && !builder) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User or Builder not found');
   }
 
   return PropertyView.create(viewBody);

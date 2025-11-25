@@ -4,11 +4,17 @@ import paginate from './plugins/paginate.plugin.js';
 
 const propertySchema = mongoose.Schema(
   {
-    // Builder reference
+    // Builder reference (optional - either builder or agent must be present)
     builder: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Builder',
-      required: true,
+      required: false,
+    },
+    // Agent reference (optional - either builder or agent must be present)
+    agent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
     },
     
     // Basic property information
@@ -274,6 +280,7 @@ propertySchema.plugin(paginate);
 
 // Indexes for better query performance
 propertySchema.index({ builder: 1, status: 1 });
+propertySchema.index({ agent: 1, status: 1 });
 propertySchema.index({ city: 1, locality: 1 });
 propertySchema.index({ 'geo.latitude': 1, 'geo.longitude': 1 });
 propertySchema.index({ price: 1 });
@@ -407,6 +414,16 @@ propertySchema.methods.generateSlug = function () {
     .replace(/-+/g, '-')
     .trim('-');
 };
+
+// Validate that either builder or agent is present
+propertySchema.pre('validate', function (next) {
+  const property = this;
+  if (!property.builder && !property.agent) {
+    next(new Error('Property must have either a builder or an agent'));
+  } else {
+    next();
+  }
+});
 
 // Generate slug before saving
 propertySchema.pre('save', function (next) {

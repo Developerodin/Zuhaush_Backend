@@ -1,5 +1,5 @@
 import express from 'express';
-import auth from '../../middlewares/auth.js';
+import flexibleAuth from '../../middlewares/flexibleAuth.js';
 import validate from '../../middlewares/validate.js';
 import {
   trackPropertyView,
@@ -20,7 +20,7 @@ const router = express.Router();
 // Track property view (POST /property-views)
 router.post(
   '/',
-  auth(),
+  flexibleAuth(),
   validate(trackPropertyViewValidation),
   trackPropertyView
 );
@@ -28,7 +28,7 @@ router.post(
 // Get my property views (GET /property-views/my-views)
 router.get(
   '/my-views',
-  auth(),
+  flexibleAuth(),
   validate(getMyPropertyViewsValidation),
   getMyPropertyViews
 );
@@ -36,14 +36,14 @@ router.get(
 // Get my property view statistics (GET /property-views/my-stats)
 router.get(
   '/my-stats',
-  auth(),
+  flexibleAuth(),
   getMyPropertyViewStats
 );
 
 // Get my most viewed properties (GET /property-views/my-most-viewed)
 router.get(
   '/my-most-viewed',
-  auth(),
+  flexibleAuth(),
   validate(getMyMostViewedPropertiesValidation),
   getMyMostViewedProperties
 );
@@ -51,7 +51,7 @@ router.get(
 // Get property views by user ID (GET /property-views/user/:userId) - Admin/Builder access
 router.get(
   '/user/:userId',
-  auth(),
+  flexibleAuth(),
   validate(getUserPropertyViewsValidation),
   getUserPropertyViews
 );

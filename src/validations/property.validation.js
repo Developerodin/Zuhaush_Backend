@@ -54,6 +54,7 @@ const createProperty = {
 const getProperties = {
   query: Joi.object().keys({
     builder: Joi.string().custom(objectId),
+    agent: Joi.string().custom(objectId),
     type: Joi.string().valid('apartment', 'villa', 'plot', 'commercial', 'office', 'shop', 'warehouse', 'other'),
     city: Joi.string().trim(),
     locality: Joi.string().trim(),

@@ -29,8 +29,8 @@ import {
  * @returns {Promise<Visit>}
  */
 const scheduleVisit = catchAsync(async (req, res) => {
-  // Set user from authenticated user
-  req.body.user = req.user.id;
+  // Set user from authenticated user (works for both user and builder)
+  req.body.user = req.user._id || req.user.id;
   
   const visit = await createVisit(req.body);
   res.status(httpStatus.CREATED).send(visit);
@@ -93,17 +93,18 @@ const deleteVisit = catchAsync(async (req, res) => {
  * @returns {Promise<Visit>}
  */
 const confirmVisitHandler = catchAsync(async (req, res) => {
-  const visit = await confirmVisit(req.params.visitId, req.user.id);
+  const userId = req.user._id || req.user.id;
+  const visit = await confirmVisit(req.params.visitId, userId);
   
   // Create notification for user
   try {
     const { createVisitNotifications } = await import('../services/notification.service.js');
-    await createVisitNotifications({
-      visit,
-      action: 'visit_confirmed',
-      userId: visit.user._id || visit.user,
-      builderId: req.user.id
-    });
+      await createVisitNotifications({
+        visit,
+        action: 'visit_confirmed',
+        userId: visit.user._id || visit.user,
+        builderId: userId
+      });
   } catch (error) {
     console.error('Failed to create visit confirmation notification:', error);
     // Don't throw error - notification failure shouldn't break the main operation
@@ -119,7 +120,8 @@ const confirmVisitHandler = catchAsync(async (req, res) => {
  * @returns {Promise<Visit>}
  */
 const cancelVisitHandler = catchAsync(async (req, res) => {
-  const visit = await cancelVisit(req.params.visitId, req.user.id);
+  const userId = req.user._id || req.user.id;
+  const visit = await cancelVisit(req.params.visitId, userId);
   
   // Create notification for both parties
   try {
@@ -128,7 +130,7 @@ const cancelVisitHandler = catchAsync(async (req, res) => {
       visit,
       action: 'visit_cancelled',
       userId: visit.user._id || visit.user,
-      builderId: req.user.id
+      builderId: userId
     });
   } catch (error) {
     console.error('Failed to create visit cancellation notification:', error);
@@ -216,7 +218,8 @@ const getPropertyVisits = catchAsync(async (req, res) => {
  */
 const getUpcomingVisitsHandler = catchAsync(async (req, res) => {
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
-  const result = await getUpcomingVisits(req.user.id, options);
+  const userId = req.user._id || req.user.id;
+  const result = await getUpcomingVisits(userId, options);
   res.send(result);
 });
 
@@ -227,7 +230,8 @@ const getUpcomingVisitsHandler = catchAsync(async (req, res) => {
  * @returns {Promise<Object>}
  */
 const getVisitStatsHandler = catchAsync(async (req, res) => {
-  const stats = await getVisitStats(req.user.id);
+  const userId = req.user._id || req.user.id;
+  const stats = await getVisitStats(userId);
   res.send(stats);
 });
 
@@ -239,7 +243,8 @@ const getVisitStatsHandler = catchAsync(async (req, res) => {
  */
 const getMyVisits = catchAsync(async (req, res) => {
   const options = pick(req.query, ['status', 'sortBy', 'limit', 'page']);
-  const result = await getVisitsByUser(req.user.id, options);
+  const userId = req.user._id || req.user.id;
+  const result = await getVisitsByUser(userId, options);
   res.send(result);
 });
 
@@ -256,7 +261,8 @@ const getVisitDetails = catchAsync(async (req, res) => {
   }
 
   // Check if user owns this visit or is admin/builder
-  if (visit.user._id.toString() !== req.user.id && 
+  const userId = req.user._id ? req.user._id.toString() : req.user.id;
+  if (visit.user._id.toString() !== userId && 
       !['admin', 'builder'].includes(req.user.role)) {
     throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
   }
@@ -277,7 +283,8 @@ const updateMyVisit = catchAsync(async (req, res) => {
   }
 
   // Check if user owns this visit
-  if (visit.user._id.toString() !== req.user.id) {
+  const userId = req.user._id ? req.user._id.toString() : req.user.id;
+  if (visit.user._id.toString() !== userId) {
     throw new ApiError(httpStatus.FORBIDDEN, 'You can only update your own visits');
   }
 
@@ -303,11 +310,12 @@ const cancelMyVisit = catchAsync(async (req, res) => {
   }
 
   // Check if user owns this visit
-  if (visit.user._id.toString() !== req.user.id) {
+  const userId = req.user._id ? req.user._id.toString() : req.user.id;
+  if (visit.user._id.toString() !== userId) {
     throw new ApiError(httpStatus.FORBIDDEN, 'You can only cancel your own visits');
   }
 
-  const cancelledVisit = await cancelVisit(req.params.visitId, req.user.id);
+  const cancelledVisit = await cancelVisit(req.params.visitId, userId);
   res.send(cancelledVisit);
 });
 
@@ -324,11 +332,12 @@ const rescheduleMyVisit = catchAsync(async (req, res) => {
   }
 
   // Check if user owns this visit
-  if (visit.user._id.toString() !== req.user.id) {
+  const userId = req.user._id ? req.user._id.toString() : req.user.id;
+  if (visit.user._id.toString() !== userId) {
     throw new ApiError(httpStatus.FORBIDDEN, 'You can only reschedule your own visits');
   }
 
-  const rescheduledVisit = await rescheduleVisit(req.params.visitId, req.user.id, req.body);
+  const rescheduledVisit = await rescheduleVisit(req.params.visitId, userId, req.body);
   res.send(rescheduledVisit);
 });
 
@@ -340,7 +349,8 @@ const rescheduleMyVisit = catchAsync(async (req, res) => {
  */
 const getMyScheduledProperties = catchAsync(async (req, res) => {
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
-  const result = await getScheduledProperties(req.user.id, options);
+  const userId = req.user._id || req.user.id;
+  const result = await getScheduledProperties(userId, options);
   res.send(result);
 });
 

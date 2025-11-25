@@ -1,4 +1,4 @@
-import { Visit, Property, User } from '../models/index.js';
+import { Visit, Property, User, Builder } from '../models/index.js';
 import ApiError from '../utils/ApiError.js';
 import httpStatus from 'http-status';
 import mongoose from 'mongoose';
@@ -15,10 +15,11 @@ const createVisit = async (visitBody) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
   }
 
-  // Check if user exists
+  // Check if user or builder exists
   const user = await User.findById(visitBody.user);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  const builder = user ? null : await Builder.findById(visitBody.user);
+  if (!user && !builder) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User or Builder not found');
   }
 
   // Check if time slot is available

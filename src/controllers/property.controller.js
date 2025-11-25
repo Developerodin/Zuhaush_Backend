@@ -22,6 +22,7 @@ import {
   searchProperties,
   getNearbyProperties,
   getPropertiesByBuilder,
+  getPropertiesByAgent,
   getPropertyStats,
   addToShortlist,
   removeFromShortlist,
@@ -39,6 +40,10 @@ const createPropertyHandler = catchAsync(async (req, res) => {
   // If user is authenticated and is a builder, set the builder field
   if (req.user && req.user.constructor.modelName === 'Builder') {
     req.body.builder = req.user.id;
+  }
+  // If user is authenticated and is an agent, set the agent field
+  else if (req.user && req.user.role === 'agent') {
+    req.body.agent = req.user.id;
   }
   const property = await createProperty(req.body);
   res.status(httpStatus.CREATED).send(property);
@@ -106,17 +111,26 @@ const getPropertyBySlugHandler = catchAsync(async (req, res) => {
  * @returns {Promise<Property>}
  */
 const updateProperty = catchAsync(async (req, res) => {
-  if (req.user && req.user.constructor.modelName === 'Builder') {
+  if (req.user && (req.user.constructor.modelName === 'Builder' || req.user.role === 'agent')) {
     const property = await getPropertyById(req.params.propertyId);
     if (!property) {
       throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
     }
     
-    // Check if the builder owns this property
-    // property.builder might be populated (object) or just an ID (string)
-    const propertyBuilderId = property.builder._id ? property.builder._id.toString() : property.builder.toString();
+    // Check if the builder or agent owns this property
+    let isOwner = false;
     
-    if (propertyBuilderId !== req.user.id) {
+    if (req.user.constructor.modelName === 'Builder') {
+      // property.builder might be populated (object) or just an ID (string)
+      const propertyBuilderId = property.builder && property.builder._id ? property.builder._id.toString() : (property.builder ? property.builder.toString() : null);
+      isOwner = propertyBuilderId === req.user.id;
+    } else if (req.user.role === 'agent') {
+      // property.agent might be populated (object) or just an ID (string)
+      const propertyAgentId = property.agent && property.agent._id ? property.agent._id.toString() : (property.agent ? property.agent.toString() : null);
+      isOwner = propertyAgentId === req.user.id;
+    }
+    
+    if (!isOwner) {
       throw new ApiError(httpStatus.FORBIDDEN, 'You can only update your own properties');
     }
   }
@@ -132,14 +146,24 @@ const updateProperty = catchAsync(async (req, res) => {
  * @returns {Promise<void>}
  */
 const deleteProperty = catchAsync(async (req, res) => {
-  // Check if user is a builder and owns this property
-  if (req.user && req.user.constructor.modelName === 'Builder') {
+  // Check if user is a builder or agent and owns this property
+  if (req.user && (req.user.constructor.modelName === 'Builder' || req.user.role === 'agent')) {
     const property = await getPropertyById(req.params.propertyId);
     if (!property) {
       throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
     }
-    const propertyBuilderId = property.builder._id ? property.builder._id.toString() : property.builder.toString();
-    if (propertyBuilderId !== req.user.id) {
+    
+    let isOwner = false;
+    
+    if (req.user.constructor.modelName === 'Builder') {
+      const propertyBuilderId = property.builder && property.builder._id ? property.builder._id.toString() : (property.builder ? property.builder.toString() : null);
+      isOwner = propertyBuilderId === req.user.id;
+    } else if (req.user.role === 'agent') {
+      const propertyAgentId = property.agent && property.agent._id ? property.agent._id.toString() : (property.agent ? property.agent.toString() : null);
+      isOwner = propertyAgentId === req.user.id;
+    }
+    
+    if (!isOwner) {
       throw new ApiError(httpStatus.FORBIDDEN, 'You can only delete your own properties');
     }
   }
@@ -155,14 +179,24 @@ const deleteProperty = catchAsync(async (req, res) => {
  * @returns {Promise<Property>}
  */
 const addMedia = catchAsync(async (req, res) => {
-  // Check if user is a builder and owns this property
-  if (req.user && req.user.constructor.modelName === 'Builder') {
+  // Check if user is a builder or agent and owns this property
+  if (req.user && (req.user.constructor.modelName === 'Builder' || req.user.role === 'agent')) {
     const property = await getPropertyById(req.params.propertyId);
     if (!property) {
       throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
     }
-    const propertyBuilderId = property.builder._id ? property.builder._id.toString() : property.builder.toString();
-    if (propertyBuilderId !== req.user.id) {
+    
+    let isOwner = false;
+    
+    if (req.user.constructor.modelName === 'Builder') {
+      const propertyBuilderId = property.builder && property.builder._id ? property.builder._id.toString() : (property.builder ? property.builder.toString() : null);
+      isOwner = propertyBuilderId === req.user.id;
+    } else if (req.user.role === 'agent') {
+      const propertyAgentId = property.agent && property.agent._id ? property.agent._id.toString() : (property.agent ? property.agent.toString() : null);
+      isOwner = propertyAgentId === req.user.id;
+    }
+    
+    if (!isOwner) {
       throw new ApiError(httpStatus.FORBIDDEN, 'You can only add media to your own properties');
     }
   }
@@ -216,14 +250,24 @@ const addMedia = catchAsync(async (req, res) => {
  * @returns {Promise<Property>}
  */
 const updateMedia = catchAsync(async (req, res) => {
-  // Check if user is a builder and owns this property
-  if (req.user && req.user.constructor.modelName === 'Builder') {
+  // Check if user is a builder or agent and owns this property
+  if (req.user && (req.user.constructor.modelName === 'Builder' || req.user.role === 'agent')) {
     const property = await getPropertyById(req.params.propertyId);
     if (!property) {
       throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
     }
-    const propertyBuilderId = property.builder._id ? property.builder._id.toString() : property.builder.toString();
-    if (propertyBuilderId !== req.user.id) {
+    
+    let isOwner = false;
+    
+    if (req.user.constructor.modelName === 'Builder') {
+      const propertyBuilderId = property.builder && property.builder._id ? property.builder._id.toString() : (property.builder ? property.builder.toString() : null);
+      isOwner = propertyBuilderId === req.user.id;
+    } else if (req.user.role === 'agent') {
+      const propertyAgentId = property.agent && property.agent._id ? property.agent._id.toString() : (property.agent ? property.agent.toString() : null);
+      isOwner = propertyAgentId === req.user.id;
+    }
+    
+    if (!isOwner) {
       throw new ApiError(httpStatus.FORBIDDEN, 'You can only update media for your own properties');
     }
   }
@@ -240,14 +284,24 @@ const updateMedia = catchAsync(async (req, res) => {
  * @returns {Promise<Property>}
  */
 const removeMedia = catchAsync(async (req, res) => {
-  // Check if user is a builder and owns this property
-  if (req.user && req.user.constructor.modelName === 'Builder') {
+  // Check if user is a builder or agent and owns this property
+  if (req.user && (req.user.constructor.modelName === 'Builder' || req.user.role === 'agent')) {
     const property = await getPropertyById(req.params.propertyId);
     if (!property) {
       throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
     }
-    const propertyBuilderId = property.builder._id ? property.builder._id.toString() : property.builder.toString();
-    if (propertyBuilderId !== req.user.id) {
+    
+    let isOwner = false;
+    
+    if (req.user.constructor.modelName === 'Builder') {
+      const propertyBuilderId = property.builder && property.builder._id ? property.builder._id.toString() : (property.builder ? property.builder.toString() : null);
+      isOwner = propertyBuilderId === req.user.id;
+    } else if (req.user.role === 'agent') {
+      const propertyAgentId = property.agent && property.agent._id ? property.agent._id.toString() : (property.agent ? property.agent.toString() : null);
+      isOwner = propertyAgentId === req.user.id;
+    }
+    
+    if (!isOwner) {
       throw new ApiError(httpStatus.FORBIDDEN, 'You can only remove media from your own properties');
     }
   }
@@ -284,13 +338,20 @@ const removeMedia = catchAsync(async (req, res) => {
 const approvePropertyHandler = catchAsync(async (req, res) => {
   const property = await approveProperty(req.params.propertyId, req.user.id);
   
-  // Create notification for builder
+  // Create notification for builder or agent
   try {
     const { createPropertyNotifications } = await import('../services/notification.service.js');
+    const builderId = property.builder && property.builder._id ? property.builder._id : (property.builder ? property.builder : null);
+    const agentId = property.agent && property.agent._id ? property.agent._id : (property.agent ? property.agent : null);
+    const recipientId = builderId || agentId;
+    const recipientType = builderId ? 'builder' : 'agent';
     await createPropertyNotifications({
       property,
       action: 'property_approved',
-      builderId: property.builder
+      builderId,
+      agentId,
+      recipientType,
+      recipientId
     });
   } catch (error) {
     console.error('Failed to create property approval notification:', error);
@@ -309,13 +370,20 @@ const approvePropertyHandler = catchAsync(async (req, res) => {
 const rejectPropertyHandler = catchAsync(async (req, res) => {
   const property = await rejectProperty(req.params.propertyId, req.user.id, req.body.reason);
   
-  // Create notification for builder
+  // Create notification for builder or agent
   try {
     const { createPropertyNotifications } = await import('../services/notification.service.js');
+    const builderId = property.builder && property.builder._id ? property.builder._id : (property.builder ? property.builder : null);
+    const agentId = property.agent && property.agent._id ? property.agent._id : (property.agent ? property.agent : null);
+    const recipientId = builderId || agentId;
+    const recipientType = builderId ? 'builder' : 'agent';
     await createPropertyNotifications({
       property,
       action: 'property_rejected',
-      builderId: property.builder,
+      builderId,
+      agentId,
+      recipientType,
+      recipientId,
       additionalData: { reason: req.body.reason }
     });
   } catch (error) {
@@ -406,13 +474,28 @@ const getPropertiesByBuilderHandler = catchAsync(async (req, res) => {
 });
 
 /**
+ * Get properties by agent
+ * @param {Object} req
+ * @param {Object} res
+ * @returns {Promise<QueryResult>}
+ */
+const getPropertiesByAgentHandler = catchAsync(async (req, res) => {
+  const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  const result = await getPropertiesByAgent(req.params.agentId, options);
+  res.send(result);
+});
+
+/**
  * Get property statistics
  * @param {Object} req
  * @param {Object} res
  * @returns {Promise<Object>}
  */
 const getPropertyStatsHandler = catchAsync(async (req, res) => {
-  const stats = await getPropertyStats(req.params.builderId);
+  // Support both builder and agent stats
+  const builderId = req.params.builderId;
+  const agentId = req.params.agentId;
+  const stats = await getPropertyStats(builderId, agentId);
   res.send(stats);
 });
 
@@ -579,6 +662,7 @@ export {
   searchPropertiesHandler,
   getNearbyPropertiesHandler,
   getPropertiesByBuilderHandler,
+  getPropertiesByAgentHandler,
   getPropertyStatsHandler,
   getFeaturedProperties,
   getTrendingProperties,

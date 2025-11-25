@@ -43,6 +43,7 @@ import {
   searchPropertiesHandler,
   getNearbyPropertiesHandler,
   getPropertiesByBuilderHandler,
+  getPropertiesByAgentHandler,
   getPropertyStatsHandler,
   getFeaturedProperties,
   getTrendingProperties,
@@ -80,10 +81,12 @@ router.get('/:propertyId/shortlist/status', validate(checkShortlistStatus), chec
 // Get property by ID - MUST be after specific routes
 router.get('/:propertyId', validate(getProperty), getPropertyHandler);
 
-// Builder routes
+// Builder and Agent routes
 router.post('/', validate(createProperty), createPropertyHandler);
 router.get('/builder/:builderId', getPropertiesByBuilderHandler);
 router.get('/builder/:builderId/stats', getPropertyStatsHandler);
+router.get('/agent/:agentId', getPropertiesByAgentHandler);
+router.get('/agent/:agentId/stats', getPropertyStatsHandler);
 router.patch('/:propertyId', validate(updateProperty), updatePropertyHandler);
 router.delete('/:propertyId', validate(deleteProperty), deletePropertyHandler);
 

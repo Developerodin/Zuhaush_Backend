@@ -10,27 +10,34 @@ import pick from '../utils/pick.js';
 const toggleLike = catchAsync(async (req, res) => {
   const result = await likeService.toggleLike(req.user._id, req.params.propertyId);
   
-  // Create notifications for both builder and user when property is liked
+  // Create notifications for both builder/agent and user when property is liked
   if (result.liked) {
     try {
       const { createPropertyNotifications, createSystemNotifications } = await import('../services/notification.service.js');
       const Property = (await import('../models/property.model.js')).default;
-      const property = await Property.findById(req.params.propertyId).populate('builder');
+      const property = await Property.findById(req.params.propertyId)
+        .populate('builder', 'name email phone')
+        .populate('agent', 'name email contactNumber');
       
-      if (property && property.builder) {
-        // Notification for builder
+      if (property && (property.builder || property.agent)) {
+        // Notification for builder or agent
+        const recipientId = property.builder?._id || property.agent?._id;
+        const recipientType = property.builder ? 'builder' : 'agent';
         await createPropertyNotifications({
           property,
           action: 'property_shortlisted', // Using shortlisted as it's similar to liking
           userId: req.user._id,
-          builderId: property.builder._id
+          builderId: property.builder?._id,
+          agentId: property.agent?._id,
+          recipientType,
+          recipientId
         });
         
-        // Notification for user
+        // Notification for user/builder/agent
         await createSystemNotifications({
           title: 'Property Liked Successfully',
-          description: `You have successfully liked "${property.title}"`,
-          recipientType: 'user',
+          description: `You have successfully liked "${property.name}"`,
+          recipientType: req.user.role === 'builder' ? 'builder' : req.user.role === 'agent' ? 'agent' : 'user',
           recipientId: req.user._id,
           notificationType: 'property_shortlisted',
           priority: 'low',
@@ -39,7 +46,7 @@ const toggleLike = catchAsync(async (req, res) => {
             url: `/properties/${property._id}`,
             metadata: { propertyId: property._id }
           },
-          metadata: { propertyId: property._id, propertyTitle: property.title }
+          metadata: { propertyId: property._id, propertyTitle: property.name }
         });
       }
     } catch (error) {

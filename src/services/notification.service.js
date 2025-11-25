@@ -151,18 +151,22 @@ const getNotificationById = async (notificationId, recipientType, recipientId) =
  * @returns {Promise<Array>}
  */
 const createPropertyNotifications = async (data) => {
-  const { property, action, userId, builderId, additionalData = {} } = data;
+  const { property, action, userId, builderId, agentId, recipientType, recipientId, additionalData = {} } = data;
+  
+  // Determine recipient type and ID (support both builder and agent)
+  const finalRecipientType = recipientType || (builderId ? 'builder' : agentId ? 'agent' : null);
+  const finalRecipientId = recipientId || builderId || agentId;
   
   const notifications = [];
 
   switch (action) {
     case 'property_shortlisted':
-      if (builderId) {
+      if (finalRecipientId && finalRecipientType) {
         notifications.push({
           title: 'Property Shortlisted',
-          description: `A user has shortlisted your property "${property.title}"`,
-          recipientType: 'builder',
-          recipientId: builderId,
+          description: `A user has shortlisted your property "${property.name || property.title}"`,
+          recipientType: finalRecipientType,
+          recipientId: finalRecipientId,
           notificationType: 'user_shortlist',
           priority: 'medium',
           actionData: {
@@ -172,18 +176,18 @@ const createPropertyNotifications = async (data) => {
           },
           senderType: 'user',
           senderId: userId,
-          metadata: { propertyId: property._id, propertyTitle: property.title }
+          metadata: { propertyId: property._id, propertyTitle: property.name || property.title }
         });
       }
       break;
 
     case 'property_viewed':
-      if (builderId) {
+      if (finalRecipientId && finalRecipientType) {
         notifications.push({
           title: 'Property Viewed',
-          description: `A user viewed your property "${property.title}"`,
-          recipientType: 'builder',
-          recipientId: builderId,
+          description: `A user viewed your property "${property.name || property.title}"`,
+          recipientType: finalRecipientType,
+          recipientId: finalRecipientId,
           notificationType: 'user_view',
           priority: 'low',
           actionData: {
@@ -193,18 +197,18 @@ const createPropertyNotifications = async (data) => {
           },
           senderType: 'user',
           senderId: userId,
-          metadata: { propertyId: property._id, propertyTitle: property.title }
+          metadata: { propertyId: property._id, propertyTitle: property.name || property.title }
         });
       }
       break;
 
     case 'property_approved':
-      if (builderId) {
+      if (finalRecipientId && finalRecipientType) {
         notifications.push({
           title: 'Property Approved',
-          description: `Your property "${property.title}" has been approved and is now live`,
-          recipientType: 'builder',
-          recipientId: builderId,
+          description: `Your property "${property.name || property.title}" has been approved and is now live`,
+          recipientType: finalRecipientType,
+          recipientId: finalRecipientId,
           notificationType: 'property_approved',
           priority: 'high',
           actionData: {
@@ -212,18 +216,18 @@ const createPropertyNotifications = async (data) => {
             url: `/properties/${property._id}`,
             metadata: { propertyId: property._id }
           },
-          metadata: { propertyId: property._id, propertyTitle: property.title }
+          metadata: { propertyId: property._id, propertyTitle: property.name || property.title }
         });
       }
       break;
 
     case 'property_rejected':
-      if (builderId) {
+      if (finalRecipientId && finalRecipientType) {
         notifications.push({
           title: 'Property Rejected',
-          description: `Your property "${property.title}" was rejected. ${additionalData.reason || 'Please review and resubmit.'}`,
-          recipientType: 'builder',
-          recipientId: builderId,
+          description: `Your property "${property.name || property.title}" was rejected. ${additionalData.reason || 'Please review and resubmit.'}`,
+          recipientType: finalRecipientType,
+          recipientId: finalRecipientId,
           notificationType: 'property_rejected',
           priority: 'high',
           actionData: {
@@ -231,7 +235,7 @@ const createPropertyNotifications = async (data) => {
             url: `/properties/${property._id}/edit`,
             metadata: { propertyId: property._id }
           },
-          metadata: { propertyId: property._id, propertyTitle: property.title, reason: additionalData.reason }
+          metadata: { propertyId: property._id, propertyTitle: property.name || property.title, reason: additionalData.reason }
         });
       }
       break;
@@ -240,7 +244,7 @@ const createPropertyNotifications = async (data) => {
       if (userId) {
         notifications.push({
           title: 'New Property Match',
-          description: `A new property "${property.title}" matches your preferences`,
+          description: `A new property "${property.name || property.title}" matches your preferences`,
           recipientType: 'user',
           recipientId: userId,
           notificationType: 'new_property_match',
@@ -250,7 +254,7 @@ const createPropertyNotifications = async (data) => {
             url: `/properties/${property._id}`,
             metadata: { propertyId: property._id }
           },
-          metadata: { propertyId: property._id, propertyTitle: property.title }
+          metadata: { propertyId: property._id, propertyTitle: property.name || property.title }
         });
       }
       break;
@@ -259,7 +263,7 @@ const createPropertyNotifications = async (data) => {
       if (userId) {
         notifications.push({
           title: 'Price Drop Alert',
-          description: `The price of "${property.title}" has dropped to ₹${additionalData.newPrice}`,
+          description: `The price of "${property.name || property.title}" has dropped to ₹${additionalData.newPrice}`,
           recipientType: 'user',
           recipientId: userId,
           notificationType: 'price_drop',
@@ -269,7 +273,7 @@ const createPropertyNotifications = async (data) => {
             url: `/properties/${property._id}`,
             metadata: { propertyId: property._id }
           },
-          metadata: { propertyId: property._id, propertyTitle: property.title, newPrice: additionalData.newPrice }
+          metadata: { propertyId: property._id, propertyTitle: property.name || property.title, newPrice: additionalData.newPrice }
         });
       }
       break;

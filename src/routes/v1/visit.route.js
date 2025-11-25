@@ -1,5 +1,5 @@
 import express from 'express';
-import auth from '../../middlewares/auth.js';
+import flexibleAuth from '../../middlewares/flexibleAuth.js';
 import validate from '../../middlewares/validate.js';
 import {
   scheduleVisit,
@@ -46,7 +46,7 @@ router.get('/properties/:propertyId/booked-slots', validate(getBookedTimeSlots),
 router.get('/properties/:propertyId/check-availability', validate(checkTimeSlotAvailability), checkTimeSlotAvailabilityHandler);
 
 // Protected routes (authentication required)
-router.use(auth());
+router.use(flexibleAuth());
 
 // User-specific routes (users can only access their own data)
 router.post('/schedule', validate(scheduleVisitValidation), scheduleVisit);

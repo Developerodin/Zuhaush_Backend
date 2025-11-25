@@ -14,7 +14,7 @@ const paginate = (schema) => {
    * @param {Object} [filter] - Mongo filter
    * @param {Object} [options] - Query options
    * @param {string} [options.sortBy] - Sorting criteria using the format: sortField:(desc|asc). Multiple sorting criteria should be separated by commas (,)
-   * @param {string} [options.populate] - Populate data fields. Hierarchy of fields should be separated by (.). Multiple populating criteria should be separated by commas (,)
+   * @param {string|Array} [options.populate] - Populate data fields. Can be a string (comma-separated paths) or an array of objects/strings. Hierarchy of fields should be separated by (.). Multiple populating criteria should be separated by commas (,) for string format.
    * @param {number} [options.limit] - Maximum number of results per page (default = 10)
    * @param {number} [options.page] - Current page (default = 1)
    * @returns {Promise<QueryResult>}
@@ -40,14 +40,36 @@ const paginate = (schema) => {
     let docsPromise = this.find(filter).sort(sort).skip(skip).limit(limit);
 
     if (options.populate) {
-      options.populate.split(',').forEach((populateOption) => {
-        docsPromise = docsPromise.populate(
-          populateOption
-            .split('.')
-            .reverse()
-            .reduce((a, b) => ({ path: b, populate: a }))
-        );
-      });
+      // Handle both string format (comma-separated) and array format (with select options)
+      if (Array.isArray(options.populate)) {
+        // Array format: [{ path: 'builder', select: 'name email' }, ...] or ['builder', 'agent']
+        options.populate.forEach((populateOption) => {
+          if (typeof populateOption === 'string') {
+            // String in array: handle nested paths like 'builder.name'
+            populateOption
+              .split('.')
+              .reverse()
+              .reduce((a, b) => {
+                const populateConfig = a ? { path: b, populate: a } : { path: b };
+                docsPromise = docsPromise.populate(populateConfig);
+                return populateConfig;
+              }, null);
+          } else if (typeof populateOption === 'object' && populateOption.path) {
+            // Object format with path and select: { path: 'builder', select: 'name email' }
+            docsPromise = docsPromise.populate(populateOption);
+          }
+        });
+      } else if (typeof options.populate === 'string') {
+        // String format: 'builder,agent' or 'builder.name,agent.email'
+        options.populate.split(',').forEach((populateOption) => {
+          docsPromise = docsPromise.populate(
+            populateOption
+              .split('.')
+              .reverse()
+              .reduce((a, b) => ({ path: b, populate: a }))
+          );
+        });
+      }
     }
 
     docsPromise = docsPromise.exec();

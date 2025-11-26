@@ -53,21 +53,23 @@ messageSchema.pre('validate', function (next) {
       return next(new Error('Either builderId or agentId is required when senderType is User'));
     }
   } else if (this.senderType === 'Builder') {
-    // Builder can chat with User or Agent
+    // Builder can chat with User, Agent, or another Builder
     if (!this.builderId) {
       return next(new Error('builderId is required when senderType is Builder'));
     }
     if (!this.userId && !this.agentId) {
       return next(new Error('Either userId or agentId is required when senderType is Builder'));
     }
+    // Note: For Builder↔Builder, the recipient builder is stored in userId field
   } else if (this.senderType === 'Agent') {
-    // Agent can chat with User or Builder
+    // Agent can chat with User, Builder, or another Agent
     if (!this.agentId) {
       return next(new Error('agentId is required when senderType is Agent'));
     }
     if (!this.userId && !this.builderId) {
       return next(new Error('Either userId or builderId is required when senderType is Agent'));
     }
+    // Note: For Agent↔Agent, the recipient agent is stored in userId field
   }
   
   next();

@@ -3,9 +3,12 @@ import { objectId } from './custom.validation.js';
 
 const createProperty = {
   body: Joi.object().keys({
+    // Optional: admin/super_admin can set builder or agent when creating property on behalf of them
+    builder: Joi.string().custom(objectId),
+    agent: Joi.string().custom(objectId),
     name: Joi.string().required().trim().max(200),
     type: Joi.string().required().valid('apartment', 'villa', 'plot', 'commercial', 'office', 'shop', 'warehouse', 'other'),
-    bhk: Joi.string().required().pattern(/^\d+\.?\d*\s*(BHK|RK|Studio)$/i),
+    bhk: Joi.string().required().pattern(/^(\d+\.?\d*(\s*[&,]\s*\d+\.?\d*)*\s*(BHK|RK|Studio)|Studio)$/i),
     area: Joi.object({
       value: Joi.number().required().min(0),
       unit: Joi.string().valid('sqft', 'sqm', 'acre', 'hectare').default('sqft'),
@@ -48,6 +51,15 @@ const createProperty = {
     flags: Joi.array().items(
       Joi.string().valid('featured', 'new_launch', 'premium', 'best_seller', 'limited_offer', 'verified', 'trending')
     ),
+    // Optional: media items (URLs only at create; for file upload use POST /:propertyId/media after create)
+    media: Joi.array().items(
+      Joi.object({
+        type: Joi.string().required().valid('image', 'video', 'document', 'floor_plan', 'brochure'),
+        url: Joi.string().required().uri().trim(),
+        caption: Joi.string().trim().max(200),
+        isPrimary: Joi.boolean().default(false),
+      })
+    ).max(50),
   }),
 };
 
@@ -92,7 +104,7 @@ const updateProperty = {
     .keys({
       name: Joi.string().trim().max(200),
       type: Joi.string().valid('apartment', 'villa', 'plot', 'commercial', 'office', 'shop', 'warehouse', 'other'),
-      bhk: Joi.string().pattern(/^\d+\.?\d*\s*(BHK|RK|Studio)$/i),
+      bhk: Joi.string().pattern(/^(\d+\.?\d*(\s*[&,]\s*\d+\.?\d*)*\s*(BHK|RK|Studio)|Studio)$/i),
       area: Joi.object({
         value: Joi.number().min(0),
         unit: Joi.string().valid('sqft', 'sqm', 'acre', 'hectare'),

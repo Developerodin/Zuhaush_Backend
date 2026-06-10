@@ -32,19 +32,31 @@ import {
 
 /**
  * Create a property
+ * Builder/Agent: builder or agent is set from logged-in user.
+ * Admin/Super_admin: can pass builder or agent in body to create property on behalf of them.
  * @param {Object} req
  * @param {Object} res
  * @returns {Promise<Property>}
  */
 const createPropertyHandler = catchAsync(async (req, res) => {
-  // If user is authenticated and is a builder, set the builder field
+  const isAdmin = req.user && req.user.constructor.modelName === 'Admin';
+
+  // If user is authenticated and is a builder, set the builder field (ignore body.builder)
   if (req.user && req.user.constructor.modelName === 'Builder') {
     req.body.builder = req.user.id;
+    req.body.agent = undefined;
   }
-  // If user is authenticated and is an agent, set the agent field
+  // If user is authenticated and is an agent, set the agent field (ignore body.agent)
   else if (req.user && req.user.role === 'agent') {
     req.body.agent = req.user.id;
+    req.body.builder = undefined;
   }
+  // Only admin/super_admin can set builder or agent from body (upload on behalf of builder/agent)
+  else if (!isAdmin) {
+    req.body.builder = undefined;
+    req.body.agent = undefined;
+  }
+  // Admin/Super_admin: body.builder and body.agent are used as provided
   const property = await createProperty(req.body);
   res.status(httpStatus.CREATED).send(property);
 });
@@ -463,6 +475,7 @@ const getNearbyPropertiesHandler = catchAsync(async (req, res) => {
 
 /**
  * Get properties by builder
+ * Admin and super_admin can list properties for any builder; builders can list their own.
  * @param {Object} req
  * @param {Object} res
  * @returns {Promise<QueryResult>}

@@ -34,8 +34,8 @@ const propertySchema = mongoose.Schema(
       required: true,
       trim: true,
       validate(value) {
-        if (!/^\d+\.?\d*\s*(BHK|RK|Studio)$/i.test(value)) {
-          throw new Error('Invalid BHK format. Use format like "2BHK", "3.5BHK", "1RK", "Studio"');
+        if (!/^(\d+\.?\d*(\s*[&,]\s*\d+\.?\d*)*\s*(BHK|RK|Studio)|Studio)$/i.test(value)) {
+          throw new Error('Invalid BHK format. Use format like "2 BHK", "3.5 BHK", "2&3 BHK", "1 RK", "Studio"');
         }
       },
     },

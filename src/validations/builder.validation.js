@@ -1,6 +1,9 @@
 import Joi from 'joi';
 import { password, objectId } from './custom.validation.js';
 
+const optionalString = Joi.string().optional().allow('', null);
+const optionalUri = Joi.string().optional().allow('', null).uri();
+
 // Basic CRUD validations
 const createBuilder = {
   body: Joi.object().keys({
@@ -8,20 +11,20 @@ const createBuilder = {
     email: Joi.string().required().email(),
     password: Joi.string().required().custom(password),
     role: Joi.string().valid('builder').optional().default('builder'),
-    contactInfo: Joi.string().optional(),
-    address: Joi.string().optional(),
-    company: Joi.string().optional(),
-    state: Joi.string().optional(),
-    city: Joi.string().optional(),
-    reraRegistrationId: Joi.string().optional(),
-    reraCertificate: Joi.string().optional(),
-    reraCertificateKey: Joi.string().optional(),
-    contactPerson: Joi.string().optional(),
-    phone: Joi.string().optional().pattern(/^\+?[1-9]\d{1,14}$/),
-    website: Joi.string().optional().uri(),
-    logo: Joi.string().optional(),
-    logoKey: Joi.string().optional(),
-    logoName: Joi.string().optional(),
+    contactInfo: optionalString,
+    address: optionalString,
+    company: optionalString,
+    state: optionalString,
+    city: optionalString,
+    reraRegistrationId: optionalString,
+    reraCertificate: optionalString,
+    reraCertificateKey: optionalString,
+    contactPerson: optionalString,
+    phone: Joi.string().optional().allow('', null).pattern(/^\+?[1-9]\d{1,14}$/),
+    website: optionalUri,
+    logo: optionalString,
+    logoKey: optionalString,
+    logoName: optionalString,
     supportingDocuments: Joi.array().items(
       Joi.object().keys({
         url: Joi.string().optional(),
@@ -68,20 +71,20 @@ const updateBuilder = {
       email: Joi.string().email(),
       password: Joi.string().custom(password),
       role: Joi.string().valid('builder'),
-      contactInfo: Joi.string(),
-      address: Joi.string(),
-      company: Joi.string(),
-      state: Joi.string(),
-      city: Joi.string(),
-      reraRegistrationId: Joi.string(),
-      reraCertificate: Joi.string(),
-      reraCertificateKey: Joi.string(),
-      contactPerson: Joi.string(),
-      phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/),
-      website: Joi.string().uri(),
-      logo: Joi.string(),
-      logoKey: Joi.string(),
-      logoName: Joi.string(),
+      contactInfo: optionalString,
+      address: optionalString,
+      company: optionalString,
+      state: optionalString,
+      city: optionalString,
+      reraRegistrationId: optionalString,
+      reraCertificate: optionalString,
+      reraCertificateKey: optionalString,
+      contactPerson: optionalString,
+      phone: Joi.string().allow('', null).pattern(/^\+?[1-9]\d{1,14}$/),
+      website: optionalUri,
+      logo: optionalString,
+      logoKey: optionalString,
+      logoName: optionalString,
       supportingDocuments: Joi.array().items(
       Joi.object().keys({
         url: Joi.string().optional(),

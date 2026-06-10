@@ -81,7 +81,7 @@ router.get('/:propertyId/shortlist/status', validate(checkShortlistStatus), chec
 // Get property by ID - MUST be after specific routes
 router.get('/:propertyId', validate(getProperty), getPropertyHandler);
 
-// Builder and Agent routes
+// Builder and Agent routes (admin/super_admin can list any builder's properties; builders can list their own)
 router.post('/', validate(createProperty), createPropertyHandler);
 router.get('/builder/:builderId', getPropertiesByBuilderHandler);
 router.get('/builder/:builderId/stats', getPropertyStatsHandler);

@@ -48,6 +48,7 @@ const getBuilders = {
     status: Joi.string().valid('draft', 'submitted', 'approved', 'rejected'),
     registrationStatus: Joi.string().valid('partial', 'otp_verified', 'completed'),
     isActive: Joi.boolean(),
+    includeIncomplete: Joi.boolean(),
     q: Joi.string(),
     sortBy: Joi.string(),
     limit: Joi.number().integer().min(1).max(100).default(10),

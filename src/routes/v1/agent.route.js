@@ -25,6 +25,7 @@ const getAgentsValidation = {
     isActive: Joi.boolean(),
     isEmailVerified: Joi.boolean(),
     registrationStatus: Joi.string().valid('partial', 'otp_verified', 'completed'),
+    includeIncomplete: Joi.boolean(),
     q: Joi.string(), // General search parameter
     sortBy: Joi.string(),
     limit: Joi.number().integer().min(1).max(100).default(10),
@@ -32,8 +33,43 @@ const getAgentsValidation = {
   }),
 };
 
+const createAgentValidation = {
+  body: userValidation.createUser.body.keys({
+    role: Joi.forbidden(),
+  }),
+};
+
+const updateAgentValidation = {
+  params: Joi.object().keys({
+    agentId: Joi.string().custom(objectId),
+  }),
+  body: userValidation.updateUser.body.keys({
+    role: Joi.forbidden(),
+  }),
+};
+
+const deleteAgentValidation = {
+  params: Joi.object().keys({
+    agentId: Joi.string().custom(objectId),
+  }),
+};
+
 router
   .route('/')
+  .post(
+    flexibleAuth('manageUsers'),
+    validate(createAgentValidation),
+    catchAsync(async (req, res) => {
+      const agent = await userService.createUser({
+        ...req.body,
+        role: 'agent',
+        registrationStatus: 'completed',
+        isEmailVerified: true,
+        isOtpVerified: true,
+      });
+      res.status(httpStatus.CREATED).send(agent);
+    })
+  )
   .get(
     flexibleAuth(),
     validate(getAgentsValidation),
@@ -51,6 +87,7 @@ router
           'isActive',
           'isEmailVerified',
           'registrationStatus',
+          'includeIncomplete',
           'q',
         ]),
         role: 'agent',
@@ -110,6 +147,36 @@ router
         throw new ApiError(httpStatus.BAD_REQUEST, 'User is not an agent');
       }
       res.send(agent);
+    })
+  )
+  .patch(
+    flexibleAuth('manageUsers'),
+    validate(updateAgentValidation),
+    catchAsync(async (req, res) => {
+      const existing = await userService.getUserById(req.params.agentId);
+      if (!existing) {
+        throw new ApiError(httpStatus.NOT_FOUND, 'Agent not found');
+      }
+      if (existing.role !== 'agent') {
+        throw new ApiError(httpStatus.BAD_REQUEST, 'User is not an agent');
+      }
+      const agent = await userService.updateUserById(req.params.agentId, req.body);
+      res.send(agent);
+    })
+  )
+  .delete(
+    flexibleAuth('manageUsers'),
+    validate(deleteAgentValidation),
+    catchAsync(async (req, res) => {
+      const existing = await userService.getUserById(req.params.agentId);
+      if (!existing) {
+        throw new ApiError(httpStatus.NOT_FOUND, 'Agent not found');
+      }
+      if (existing.role !== 'agent') {
+        throw new ApiError(httpStatus.BAD_REQUEST, 'User is not an agent');
+      }
+      await userService.deleteUserById(req.params.agentId);
+      res.status(httpStatus.NO_CONTENT).send();
     })
   );
 

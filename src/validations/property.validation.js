@@ -245,6 +245,8 @@ const searchProperties = {
     maxArea: Joi.number().min(0),
     amenities: Joi.string(),
     flags: Joi.string(),
+    status: Joi.string().trim(),
+    adminApproved: Joi.alternatives().try(Joi.boolean(), Joi.string().valid('true', 'false')),
     sortBy: Joi.string().valid('price_asc', 'price_desc', 'area_asc', 'area_desc', 'created_desc', 'views_desc'),
     limit: Joi.number().integer().min(1).max(100).default(20),
     page: Joi.number().integer().min(1).default(1),

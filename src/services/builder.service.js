@@ -9,6 +9,7 @@ import {
   verifyOTP,
   verifyOTPWithoutBlacklist,
 } from './otp.service.js';
+import { applyDiscoverableProfileFilter } from '../utils/profileDiscoverability.js';
 
 /**
  * Create a builder
@@ -80,6 +81,8 @@ const queryBuilders = async (filter, options) => {
   if (filter.isActive !== undefined) {
     mongoFilter.isActive = filter.isActive === 'true' || filter.isActive === true;
   }
+
+  applyDiscoverableProfileFilter(mongoFilter, filter, 'builder');
   
   const builders = await Builder.paginate(mongoFilter, options);
   return builders;

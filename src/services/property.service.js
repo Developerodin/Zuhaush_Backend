@@ -262,6 +262,33 @@ const incrementPropertyInquiries = async (propertyId) => {
   return property.incrementInquiries();
 };
 
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Build a flexible regex so "Shantiheights" matches "Shanti Heights", etc.
+ * @param {string} query
+ * @returns {string|null}
+ */
+const buildFlexibleTextRegex = (query) => {
+  const trimmed = query.trim();
+  if (!trimmed) return null;
+
+  const patterns = [escapeRegex(trimmed)];
+
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length > 1) {
+    patterns.push(words.map(escapeRegex).join('\\s*'));
+  }
+
+  const compact = trimmed.replace(/\s+/g, '');
+  if (compact.length >= 2) {
+    patterns.push(compact.split('').map((char) => escapeRegex(char)).join('\\s*'));
+  }
+
+  const uniquePatterns = [...new Set(patterns)];
+  return uniquePatterns.length === 1 ? uniquePatterns[0] : `(${uniquePatterns.join('|')})`;
+};
+
 /**
  * Search properties with filters
  * @param {Object} searchParams
@@ -280,20 +307,30 @@ const searchProperties = async (searchParams) => {
     maxArea,
     amenities,
     flags,
+    status,
+    adminApproved,
     sortBy = 'createdAt',
     limit = 20,
     page = 1,
   } = searchParams;
 
-  const filter = { status: 'active', adminApproved: true };
+  // Match home listing scope — do not hard-require active/approved unless explicitly passed
+  const filter = {};
+  if (status) filter.status = status;
+  if (adminApproved !== undefined) {
+    filter.adminApproved = adminApproved === 'true' || adminApproved === true;
+  }
 
   // Text search
   if (q) {
+    const textPattern = buildFlexibleTextRegex(q);
+    console.log('[searchProperties] q:', q, 'regex:', textPattern, 'filter:', filter);
+
     filter.$or = [
-      { name: { $regex: q, $options: 'i' } },
-      { description: { $regex: q, $options: 'i' } },
-      { city: { $regex: q, $options: 'i' } },
-      { locality: { $regex: q, $options: 'i' } },
+      { name: { $regex: textPattern, $options: 'i' } },
+      { description: { $regex: textPattern, $options: 'i' } },
+      { city: { $regex: textPattern, $options: 'i' } },
+      { locality: { $regex: textPattern, $options: 'i' } },
     ];
   }
 
@@ -365,7 +402,9 @@ const searchProperties = async (searchParams) => {
     ],
   };
 
-  return Property.paginate(filter, options);
+  const result = await Property.paginate(filter, options);
+  console.log('[searchProperties] results:', result.totalResults, 'for q:', q);
+  return result;
 };
 
 /**

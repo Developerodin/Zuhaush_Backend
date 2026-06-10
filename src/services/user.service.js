@@ -9,6 +9,7 @@ import {
   verifyOTP,
   verifyOTPWithoutBlacklist,
 } from './otp.service.js';
+import { applyDiscoverableProfileFilter } from '../utils/profileDiscoverability.js';
 
 /**
  * Create a user
@@ -41,7 +42,10 @@ const queryUsers = async (filter, options) => {
       { name: { $regex: filter.q, $options: 'i' } },
       { email: { $regex: filter.q, $options: 'i' } },
       { contactNumber: { $regex: filter.q, $options: 'i' } },
-      { cityofInterest: { $regex: filter.q, $options: 'i' } }
+      { cityofInterest: { $regex: filter.q, $options: 'i' } },
+      { agencyName: { $regex: filter.q, $options: 'i' } },
+      { reraNumber: { $regex: filter.q, $options: 'i' } },
+      { state: { $regex: filter.q, $options: 'i' } },
     ];
   } else {
     // Handle specific field searches - use OR logic when multiple fields are provided
@@ -50,6 +54,9 @@ const queryUsers = async (filter, options) => {
     if (filter.email) searchFields.push({ email: { $regex: filter.email, $options: 'i' } });
     if (filter.contactNumber) searchFields.push({ contactNumber: { $regex: filter.contactNumber, $options: 'i' } });
     if (filter.cityofInterest) searchFields.push({ cityofInterest: { $regex: filter.cityofInterest, $options: 'i' } });
+    if (filter.agencyName) searchFields.push({ agencyName: { $regex: filter.agencyName, $options: 'i' } });
+    if (filter.reraNumber) searchFields.push({ reraNumber: { $regex: filter.reraNumber, $options: 'i' } });
+    if (filter.state) searchFields.push({ state: { $regex: filter.state, $options: 'i' } });
     
     if (searchFields.length > 0) {
       if (searchFields.length === 1) {
@@ -77,6 +84,10 @@ const queryUsers = async (filter, options) => {
   }
   if (filter.registrationStatus) {
     mongoFilter.registrationStatus = filter.registrationStatus;
+  }
+
+  if (filter.role === 'agent') {
+    applyDiscoverableProfileFilter(mongoFilter, filter, 'agent');
   }
   
   const users = await User.paginate(mongoFilter, options);

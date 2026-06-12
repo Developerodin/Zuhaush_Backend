@@ -1,4 +1,4 @@
-const hasTruthyString = (value) => typeof value === 'string' && value.trim().length > 0;
+﻿const hasTruthyString = (value) => typeof value === 'string' && value.trim().length > 0;
 
 const isTruthyQueryFlag = (value) => value === true || value === 'true';
 
@@ -27,13 +27,16 @@ const getDiscoverableBuilderFilter = () => ({
 
 /**
  * MongoDB constraints for agents shown in public discovery surfaces.
+ * Requires a completed registration and the agent-specific profile fields
+ * used by admin/mobile onboarding (excludes partial / otp_verified profiles).
  */
 const getDiscoverableAgentFilter = () => ({
   role: 'agent',
   isActive: { $ne: false },
   registrationStatus: 'completed',
   name: { $exists: true, $nin: [null, ''] },
-  contactNumber: { $exists: true, $nin: [null, ''] },
+  agencyName: { $exists: true, $nin: [null, ''] },
+  reraNumber: { $exists: true, $nin: [null, ''] },
   cityofInterest: { $exists: true, $nin: [null, ''] },
 });
 
@@ -96,7 +99,8 @@ const isDiscoverableAgentProfile = (agent = {}) => {
 
   return (
     hasTruthyString(agent.name) &&
-    hasTruthyString(agent.contactNumber) &&
+    hasTruthyString(agent.agencyName) &&
+    hasTruthyString(agent.reraNumber) &&
     hasTruthyString(agent.cityofInterest)
   );
 };

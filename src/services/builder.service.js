@@ -651,11 +651,14 @@ const getEffectiveBuilderRegistrationStatus = (builder) => {
   if (builder.registrationStatus === 'partial' && !builder.isOtpVerified) {
     return 'partial';
   }
+  if (
+    builder.registrationStatus === 'completed' ||
+    Builder.hasCompletedRegistrationProfile(builder)
+  ) {
+    return 'completed';
+  }
   if (builder.registrationStatus === 'otp_verified') {
     return 'otp_verified';
-  }
-  if (builder.registrationStatus === 'completed') {
-    return 'completed';
   }
   // Legacy accounts without registrationStatus — treat as completed (login flow)
   return 'completed';
@@ -665,6 +668,14 @@ const checkBuilderEmail = async (email) => {
   const builder = await getBuilderByEmail(email);
   
   if (builder) {
+    if (
+      Builder.hasCompletedRegistrationProfile(builder) &&
+      builder.registrationStatus !== 'completed'
+    ) {
+      await updateBuilderById(builder.id, { registrationStatus: 'completed' });
+      builder.registrationStatus = 'completed';
+    }
+
     const registrationStatus = getEffectiveBuilderRegistrationStatus(builder);
     const isPartialRegistration = registrationStatus === 'partial';
 
@@ -742,7 +753,7 @@ const createBuilderPassword = async (builderData) => {
   }
   
   // Check if registration is already completed
-  if (existingBuilder.registrationStatus === 'completed') {
+  if (getEffectiveBuilderRegistrationStatus(existingBuilder) === 'completed') {
     throw new ApiError(httpStatus.CONFLICT, 'Registration already completed');
   }
   

@@ -342,13 +342,35 @@ builderSchema.methods.isOtpValid = function (otpCode) {
   return builder.otpCode === otpCode && builder.otpExpiry && builder.otpExpiry > new Date();
 };
 
+const hasCompletedBuilderRegistrationProfile = (builder) => {
+  if (!builder?.isOtpVerified) {
+    return false;
+  }
+
+  const hasAppRegistrationProfile =
+    Boolean(builder.name) &&
+    Boolean(builder.company) &&
+    Boolean(builder.city) &&
+    Boolean(builder.reraRegistrationId) &&
+    Boolean(builder.reraCertificate) &&
+    Boolean(builder.logo);
+
+  const hasLegacyRegistrationProfile =
+    Boolean(builder.contactInfo) &&
+    Boolean(builder.address) &&
+    Boolean(builder.company) &&
+    Boolean(builder.city);
+
+  return hasAppRegistrationProfile || hasLegacyRegistrationProfile;
+};
+
 /**
  * Check if builder registration is complete
  * @returns {boolean}
  */
 builderSchema.methods.isRegistrationComplete = function () {
   const builder = this;
-  return builder.registrationStatus === 'completed';
+  return builder.registrationStatus === 'completed' || hasCompletedBuilderRegistrationProfile(builder);
 };
 
 /**
@@ -357,8 +379,10 @@ builderSchema.methods.isRegistrationComplete = function () {
  */
 builderSchema.methods.needsToCompleteRegistration = function () {
   const builder = this;
-  return builder.registrationStatus === 'otp_verified';
+  return builder.registrationStatus === 'otp_verified' && !hasCompletedBuilderRegistrationProfile(builder);
 };
+
+builderSchema.statics.hasCompletedRegistrationProfile = hasCompletedBuilderRegistrationProfile;
 
 /**
  * Check if builder is in draft status
@@ -620,10 +644,22 @@ builderSchema.pre('save', async function (next) {
   }
   
   // Update registration status based on completed fields
-  if (builder.isModified(['name', 'contactInfo', 'address', 'company', 'city', 'isOtpVerified'])) {
-    if (builder.isOtpVerified && builder.contactInfo && builder.address && builder.company && builder.city) {
+  if (
+    builder.isModified([
+      'name',
+      'contactInfo',
+      'address',
+      'company',
+      'city',
+      'reraRegistrationId',
+      'reraCertificate',
+      'logo',
+      'isOtpVerified',
+    ])
+  ) {
+    if (hasCompletedBuilderRegistrationProfile(builder)) {
       builder.registrationStatus = 'completed';
-    } else if (builder.isOtpVerified) {
+    } else if (builder.isOtpVerified && builder.registrationStatus !== 'completed') {
       builder.registrationStatus = 'otp_verified';
     }
   }

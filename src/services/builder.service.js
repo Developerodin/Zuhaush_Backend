@@ -9,7 +9,6 @@ import {
   verifyOTP,
   verifyOTPWithoutBlacklist,
 } from './otp.service.js';
-import { applyDiscoverableProfileFilter } from '../utils/profileDiscoverability.js';
 
 /**
  * Create a builder
@@ -20,7 +19,21 @@ const createBuilder = async (builderBody) => {
   if (await Builder.isEmailTaken(builderBody.email)) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
   }
-  return Builder.create(builderBody);
+
+  const payload = { ...builderBody };
+  const hasCompleteAdminProfile =
+    payload.name &&
+    payload.contactInfo &&
+    payload.address &&
+    payload.company &&
+    payload.city;
+
+  if (hasCompleteAdminProfile) {
+    payload.isOtpVerified = true;
+    payload.registrationStatus = 'completed';
+  }
+
+  return Builder.create(payload);
 };
 
 /**
@@ -82,8 +95,6 @@ const queryBuilders = async (filter, options) => {
     mongoFilter.isActive = filter.isActive === 'true' || filter.isActive === true;
   }
 
-  applyDiscoverableProfileFilter(mongoFilter, filter, 'builder');
-  
   const builders = await Builder.paginate(mongoFilter, options);
   return builders;
 };
@@ -636,13 +647,36 @@ const getBuilderStats = async () => {
  * @param {string} email
  * @returns {Promise<Object>}
  */
+const getEffectiveBuilderRegistrationStatus = (builder) => {
+  if (builder.registrationStatus === 'partial' && !builder.isOtpVerified) {
+    return 'partial';
+  }
+  if (builder.registrationStatus === 'otp_verified') {
+    return 'otp_verified';
+  }
+  if (builder.registrationStatus === 'completed') {
+    return 'completed';
+  }
+  // Legacy accounts without registrationStatus — treat as completed (login flow)
+  return 'completed';
+};
+
 const checkBuilderEmail = async (email) => {
   const builder = await getBuilderByEmail(email);
   
   if (builder) {
+    const registrationStatus = getEffectiveBuilderRegistrationStatus(builder);
+    const isPartialRegistration = registrationStatus === 'partial';
+
     return {
       exists: true,
-      message: 'Builder already exists. Please login with your password.',
+      registrationStatus,
+      isOtpVerified: Boolean(builder.isOtpVerified),
+      message: isPartialRegistration
+        ? 'Registration in progress. Please verify your OTP.'
+        : registrationStatus === 'otp_verified'
+          ? 'OTP verified. Please create your password.'
+          : 'Builder already exists. Please login with your password.',
     };
   }
   
@@ -658,14 +692,25 @@ const checkBuilderEmail = async (email) => {
  * @returns {Promise<Object>}
  */
 const sendBuilderRegistrationOTP = async (email) => {
-  // Check if builder already exists
   const existingBuilder = await getBuilderByEmail(email);
   if (existingBuilder) {
+    const registrationStatus = getEffectiveBuilderRegistrationStatus(existingBuilder);
+
+    if (registrationStatus === 'partial' && !existingBuilder.isOtpVerified) {
+      await sendEmailVerificationOTP(email, 'builder');
+      return {
+        message: 'OTP sent to your email',
+        tempBuilderId: existingBuilder.id,
+      };
+    }
+
+    if (registrationStatus === 'otp_verified') {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'OTP already verified. Please create your password.');
+    }
+
     throw new ApiError(httpStatus.CONFLICT, 'Builder already exists with this email');
   }
 
-  // For registration, we'll use the existing OTP flow but with a temp builder
-  // Create a temporary builder record that will be completed in later steps
   const tempBuilder = await createBuilder({
     email,
     password: 'TEMP_PASSWORD_' + Date.now(), // Temporary password
@@ -674,7 +719,6 @@ const sendBuilderRegistrationOTP = async (email) => {
     registrationStatus: 'partial',
   });
 
-  // Send OTP for email verification (pass 'builder' as userType)
   await sendEmailVerificationOTP(email, 'builder');
 
   return {

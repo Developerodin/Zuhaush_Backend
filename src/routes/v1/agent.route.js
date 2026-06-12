@@ -92,6 +92,10 @@ router
         ]),
         role: 'agent',
       };
+      const adminRole = req.user?.roleName || req.user?.role;
+      if (['admin', 'super_admin'].includes(adminRole) && filter.includeIncomplete === undefined) {
+        filter.includeIncomplete = true;
+      }
       const options = pick(req.query, ['sortBy', 'limit', 'page']);
       const result = await userService.queryUsers(filter, options);
       res.send(result);

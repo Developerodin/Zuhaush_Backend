@@ -376,13 +376,36 @@ const guestLogin = async () => {
  * @param {string} email
  * @returns {Promise<Object>}
  */
+const getEffectiveRegistrationStatus = (user) => {
+  if (user.registrationStatus === 'partial' && !user.isOtpVerified) {
+    return 'partial';
+  }
+  if (user.registrationStatus === 'otp_verified') {
+    return 'otp_verified';
+  }
+  if (user.registrationStatus === 'completed') {
+    return 'completed';
+  }
+  // Legacy accounts without registrationStatus — treat as completed (login flow)
+  return 'completed';
+};
+
 const checkEmail = async (email) => {
   const user = await getUserByEmail(email);
   
   if (user) {
+    const registrationStatus = getEffectiveRegistrationStatus(user);
+    const isPartialRegistration = registrationStatus === 'partial';
+
     return {
       exists: true,
-      message: 'User already exists. Please login with your password.',
+      registrationStatus,
+      isOtpVerified: Boolean(user.isOtpVerified),
+      message: isPartialRegistration
+        ? 'Registration in progress. Please verify your OTP.'
+        : registrationStatus === 'otp_verified'
+          ? 'OTP verified. Please create your password.'
+          : 'User already exists. Please login with your password.',
     };
   }
   
@@ -398,14 +421,25 @@ const checkEmail = async (email) => {
  * @returns {Promise<Object>}
  */
 const sendRegistrationOTP = async (email) => {
-  // Check if user already exists
   const existingUser = await getUserByEmail(email);
   if (existingUser) {
+    const registrationStatus = getEffectiveRegistrationStatus(existingUser);
+
+    if (registrationStatus === 'partial' && !existingUser.isOtpVerified) {
+      await sendEmailOTP(email, 'email_verification');
+      return {
+        message: `OTP sent successfully to ${email}`,
+        tempUserId: existingUser.id,
+      };
+    }
+
+    if (registrationStatus === 'otp_verified') {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'OTP already verified. Please create your password.');
+    }
+
     throw new ApiError(httpStatus.CONFLICT, 'User already exists with this email');
   }
 
-  // For registration, we'll use the existing OTP flow but with a temp user
-  // Create a temporary user record that will be completed in later steps
   const tempUser = await createUser({
     email,
     password: 'TEMP_PASSWORD_' + Date.now(), // Temporary password
@@ -413,7 +447,6 @@ const sendRegistrationOTP = async (email) => {
     registrationStatus: 'partial',
   });
 
-  // Send OTP for email verification
   await sendEmailOTP(email, 'email_verification');
 
   return {

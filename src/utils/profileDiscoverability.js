@@ -9,19 +9,27 @@ const isTruthyQueryFlag = (value) => value === true || value === 'true';
 const shouldIncludeIncompleteProfiles = (filter = {}) =>
   isTruthyQueryFlag(filter.includeIncomplete) || Boolean(filter.registrationStatus);
 
-/**
- * MongoDB constraints for builders shown in public discovery surfaces (e.g. home scroller).
- * Requires a completed registration and enough profile data to display meaningfully.
- */
-const getDiscoverableBuilderFilter = () => ({
-  isActive: { $ne: false },
-  registrationStatus: 'completed',
-  name: { $exists: true, $nin: [null, ''] },
+const hasDisplayableBuilderProfileFields = () => ({
   $or: [
     { company: { $exists: true, $nin: [null, ''] } },
     { city: { $exists: true, $nin: [null, ''] } },
     { contactInfo: { $exists: true, $nin: [null, ''] } },
     { reraRegistrationId: { $exists: true, $nin: [null, ''] } },
+  ],
+});
+
+/**
+ * MongoDB constraints for builders shown in public discovery surfaces (e.g. home scroller).
+ * Includes self-registered completed profiles and admin-approved builders with display data.
+ */
+const getDiscoverableBuilderFilter = () => ({
+  isActive: { $ne: false },
+  name: { $exists: true, $nin: [null, ''] },
+  $and: [
+    {
+      $or: [{ registrationStatus: 'completed' }, { status: 'approved' }],
+    },
+    hasDisplayableBuilderProfileFields(),
   ],
 });
 
@@ -76,7 +84,13 @@ const applyDiscoverableProfileFilter = (mongoFilter, filter, profileType) => {
  * Runtime check used when shaping single-record responses.
  */
 const isDiscoverableBuilderProfile = (builder = {}) => {
-  if (builder.isActive === false || builder.registrationStatus !== 'completed') {
+  if (builder.isActive === false) {
+    return false;
+  }
+
+  const hasCompletedRegistration = builder.registrationStatus === 'completed';
+  const isAdminApproved = builder.status === 'approved';
+  if (!hasCompletedRegistration && !isAdminApproved) {
     return false;
   }
 

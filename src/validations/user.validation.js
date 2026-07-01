@@ -22,7 +22,7 @@ const createUser = {
       })
       .optional(),
     // Agent-specific fields
-    reraNumber: Joi.string().optional(),
+    reraNumber: Joi.string().optional().allow(''),
     state: Joi.string().optional(),
     agencyName: Joi.string().optional(),
     reraCertificate: Joi.string().optional(),
@@ -85,9 +85,9 @@ const updateUser = {
         releaseMessages: Joi.boolean(),
       }),
       // Agent-specific fields
-      reraNumber: Joi.string().optional(),
+      reraNumber: Joi.string().optional().allow(''),
       state: Joi.string().optional(),
-      agencyName: Joi.string().optional(),
+      agencyName: Joi.string().optional().allow(''),
       reraCertificate: Joi.string().optional(),
       reraCertificateKey: Joi.string().optional(),
       yearsOfExperience: Joi.number().min(0).optional(),
@@ -167,7 +167,7 @@ const completeRegistrationWithProfile = {
       })
       .optional(),
     // Agent-specific fields
-    reraNumber: Joi.string().optional(),
+    reraNumber: Joi.string().optional().allow(''),
     state: Joi.string().optional(),
     agencyName: Joi.string().optional(),
     reraCertificate: Joi.string().optional(),
@@ -241,9 +241,9 @@ const updateProfile = {
         })
         .optional(),
       // Agent-specific fields
-      reraNumber: Joi.string().optional(),
+      reraNumber: Joi.string().optional().allow(''),
       state: Joi.string().optional(),
-      agencyName: Joi.string().optional(),
+      agencyName: Joi.string().optional().allow(''),
       reraCertificate: Joi.string().optional(),
       reraCertificateKey: Joi.string().optional(),
       yearsOfExperience: Joi.number().min(0).optional(),

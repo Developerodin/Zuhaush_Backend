@@ -136,7 +136,7 @@ const completeRegistrationWithProfile = {
     contactNumber: Joi.string().optional(),
     cityofInterest: Joi.string().optional(),
     // Agent-specific fields (all optional, will be validated if role is agent)
-    reraNumber: Joi.string().optional(),
+    reraNumber: Joi.string().optional().allow(''),
     state: Joi.string().optional(),
     agencyName: Joi.string().optional(),
     reraCertificate: Joi.string().optional(),

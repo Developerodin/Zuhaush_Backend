@@ -399,6 +399,7 @@ const checkEmail = async (email) => {
 
     return {
       exists: true,
+      role: user.role || 'user',
       registrationStatus,
       isOtpVerified: Boolean(user.isOtpVerified),
       message: isPartialRegistration

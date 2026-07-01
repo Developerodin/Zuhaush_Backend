@@ -356,7 +356,7 @@ const approvePropertyHandler = catchAsync(async (req, res) => {
     const builderId = property.builder && property.builder._id ? property.builder._id : (property.builder ? property.builder : null);
     const agentId = property.agent && property.agent._id ? property.agent._id : (property.agent ? property.agent : null);
     const recipientId = builderId || agentId;
-    const recipientType = builderId ? 'builder' : 'agent';
+    const recipientType = builderId ? 'builder' : 'user';
     await createPropertyNotifications({
       property,
       action: 'property_approved',
@@ -388,7 +388,7 @@ const rejectPropertyHandler = catchAsync(async (req, res) => {
     const builderId = property.builder && property.builder._id ? property.builder._id : (property.builder ? property.builder : null);
     const agentId = property.agent && property.agent._id ? property.agent._id : (property.agent ? property.agent : null);
     const recipientId = builderId || agentId;
-    const recipientType = builderId ? 'builder' : 'agent';
+    const recipientType = builderId ? 'builder' : 'user';
     await createPropertyNotifications({
       property,
       action: 'property_rejected',

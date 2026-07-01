@@ -681,6 +681,7 @@ const checkBuilderEmail = async (email) => {
 
     return {
       exists: true,
+      role: 'builder',
       registrationStatus,
       isOtpVerified: Boolean(builder.isOtpVerified),
       message: isPartialRegistration

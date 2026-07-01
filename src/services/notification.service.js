@@ -154,7 +154,7 @@ const createPropertyNotifications = async (data) => {
   const { property, action, userId, builderId, agentId, recipientType, recipientId, additionalData = {} } = data;
   
   // Determine recipient type and ID (support both builder and agent)
-  const finalRecipientType = recipientType || (builderId ? 'builder' : agentId ? 'agent' : null);
+  const finalRecipientType = recipientType || (builderId ? 'builder' : agentId ? 'user' : null);
   const finalRecipientId = recipientId || builderId || agentId;
   
   const notifications = [];

@@ -35,8 +35,8 @@ const getDiscoverableBuilderFilter = () => ({
 
 /**
  * MongoDB constraints for agents shown in public discovery surfaces.
- * Requires a completed registration and the agent-specific profile fields
- * used by admin/mobile onboarding (excludes partial / otp_verified profiles).
+ * Requires a completed registration and core profile fields (name, agency, city).
+ * reraNumber is optional — excluded from discoverability requirements.
  */
 const getDiscoverableAgentFilter = () => ({
   role: 'agent',
@@ -44,7 +44,6 @@ const getDiscoverableAgentFilter = () => ({
   registrationStatus: 'completed',
   name: { $exists: true, $nin: [null, ''] },
   agencyName: { $exists: true, $nin: [null, ''] },
-  reraNumber: { $exists: true, $nin: [null, ''] },
   cityofInterest: { $exists: true, $nin: [null, ''] },
 });
 
@@ -114,7 +113,6 @@ const isDiscoverableAgentProfile = (agent = {}) => {
   return (
     hasTruthyString(agent.name) &&
     hasTruthyString(agent.agencyName) &&
-    hasTruthyString(agent.reraNumber) &&
     hasTruthyString(agent.cityofInterest)
   );
 };

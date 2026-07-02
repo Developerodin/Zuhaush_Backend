@@ -20,6 +20,7 @@ import {
   cancelMyVisit,
   rescheduleMyVisit,
   getMyScheduledProperties,
+  getMyPropertyVisits,
   getUserScheduledProperties,
   getMasterTimeSlotsHandler,
 } from '../../controllers/visit.controller.js';
@@ -52,6 +53,7 @@ router.use(flexibleAuth());
 router.post('/schedule', validate(scheduleVisitValidation), scheduleVisit);
 router.get('/my-visits', validate(getVisitsValidation), getMyVisits);
 router.get('/my-scheduled-properties', validate(getVisitsValidation), getMyScheduledProperties);
+router.get('/my-property-visits', validate(getVisitsValidation), getMyPropertyVisits);
 router.get('/upcoming', validate(getVisitsValidation), getUpcomingVisitsHandler);
 router.get('/stats', getVisitStatsHandler);
 router.get('/:visitId', validate(getVisitValidation), getVisitDetails);

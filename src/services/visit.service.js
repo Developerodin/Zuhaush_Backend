@@ -89,7 +89,14 @@ const queryVisits = async (filter, options) => {
 const getVisitById = async (id) => {
   return Visit.findById(id)
     .populate('user', 'name email contactNumber')
-    .populate('property', 'name type city locality price area media builder')
+    .populate({
+      path: 'property',
+      select: 'name type city locality price area media builder agent geo bhk status',
+      populate: [
+        { path: 'builder', select: 'name email phone contactInfo' },
+        { path: 'agent', select: 'name email contactNumber' },
+      ],
+    })
     .populate('cancelledBy', 'name email')
     .populate('rescheduledBy', 'name email');
 };
@@ -309,6 +316,56 @@ const getVisitsByProperty = async (propertyId, options = {}) => {
 };
 
 /**
+ * Get visits for properties owned by a builder or agent
+ * @param {ObjectId} ownerId
+ * @param {'builder'|'agent'} ownerRole
+ * @param {Object} options
+ * @returns {Promise<QueryResult>}
+ */
+const getVisitsByPropertyOwner = async (ownerId, ownerRole, options = {}) => {
+  if (!['builder', 'agent'].includes(ownerRole)) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only builders and agents can access property visits');
+  }
+
+  const propertyFilter = ownerRole === 'builder'
+    ? { builder: ownerId }
+    : { agent: ownerId };
+
+  const properties = await Property.find(propertyFilter).select('_id');
+  const propertyIds = properties.map((property) => property._id);
+
+  if (!propertyIds.length) {
+    const limit = options.limit && parseInt(options.limit, 10) > 0 ? parseInt(options.limit, 10) : 10;
+    const page = options.page && parseInt(options.page, 10) > 0 ? parseInt(options.page, 10) : 1;
+
+    return {
+      results: [],
+      page,
+      limit,
+      totalPages: 0,
+      totalResults: 0,
+    };
+  }
+
+  const filter = {
+    property: { $in: propertyIds },
+  };
+
+  if (options.status) {
+    filter.status = options.status;
+  }
+
+  const defaultOptions = {
+    sortBy: 'date:asc',
+    limit: 10,
+    page: 1,
+    ...options,
+  };
+
+  return queryVisits(filter, defaultOptions);
+};
+
+/**
  * Get upcoming visits for a user
  * @param {ObjectId} userId
  * @param {Object} options
@@ -494,6 +551,7 @@ export {
   checkTimeSlotAvailability,
   getVisitsByUser,
   getVisitsByProperty,
+  getVisitsByPropertyOwner,
   getUpcomingVisits,
   getVisitStats,
   getScheduledProperties,

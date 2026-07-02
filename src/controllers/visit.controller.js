@@ -20,6 +20,7 @@ import {
   getVisitStats,
   getScheduledProperties,
   getMasterTimeSlots,
+  getVisitsByPropertyOwner,
 } from '../services/visit.service.js';
 
 /**
@@ -93,16 +94,36 @@ const deleteVisit = catchAsync(async (req, res) => {
  * @returns {Promise<Visit>}
  */
 const confirmVisitHandler = catchAsync(async (req, res) => {
-  const userId = req.user._id || req.user.id;
-  const visit = await confirmVisit(req.params.visitId, userId);
+  const userId = (req.user._id || req.user.id).toString();
+  const userRole = req.user.role;
+  const visit = await getVisitById(req.params.visitId);
+
+  if (!visit) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Visit not found');
+  }
+
+  let isPropertyOwner = false;
+  if (userRole === 'builder' && visit.property?.builder) {
+    const builderId = visit.property.builder._id?.toString() || visit.property.builder.toString();
+    isPropertyOwner = builderId === userId;
+  } else if (userRole === 'agent' && visit.property?.agent) {
+    const agentId = visit.property.agent._id?.toString() || visit.property.agent.toString();
+    isPropertyOwner = agentId === userId;
+  }
+
+  if (!isPropertyOwner && userRole !== 'admin' && req.user.roleName !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only the property owner can confirm this visit');
+  }
+
+  const confirmedVisit = await confirmVisit(req.params.visitId, userId);
   
   // Create notification for user
   try {
     const { createVisitNotifications } = await import('../services/notification.service.js');
       await createVisitNotifications({
-        visit,
+        visit: confirmedVisit,
         action: 'visit_confirmed',
-        userId: visit.user._id || visit.user,
+        userId: confirmedVisit.user._id || confirmedVisit.user,
         builderId: userId
       });
   } catch (error) {
@@ -110,7 +131,7 @@ const confirmVisitHandler = catchAsync(async (req, res) => {
     // Don't throw error - notification failure shouldn't break the main operation
   }
   
-  res.send(visit);
+  res.send(confirmedVisit);
 });
 
 /**
@@ -260,10 +281,21 @@ const getVisitDetails = catchAsync(async (req, res) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Visit not found');
   }
 
-  // Check if user owns this visit or is admin/builder
-  const userId = req.user._id ? req.user._id.toString() : req.user.id;
-  if (visit.user._id.toString() !== userId && 
-      !['admin', 'builder'].includes(req.user.role)) {
+  const userId = (req.user._id || req.user.id).toString();
+  const userRole = req.user.role;
+  const isVisitor = visit.user._id.toString() === userId;
+  const isAdmin = userRole === 'admin' || req.user.roleName === 'admin';
+
+  let isPropertyOwner = false;
+  if (userRole === 'builder' && visit.property?.builder) {
+    const builderId = visit.property.builder._id?.toString() || visit.property.builder.toString();
+    isPropertyOwner = builderId === userId;
+  } else if (userRole === 'agent' && visit.property?.agent) {
+    const agentId = visit.property.agent._id?.toString() || visit.property.agent.toString();
+    isPropertyOwner = agentId === userId;
+  }
+
+  if (!isVisitor && !isAdmin && !isPropertyOwner) {
     throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
   }
 
@@ -355,6 +387,25 @@ const getMyScheduledProperties = catchAsync(async (req, res) => {
 });
 
 /**
+ * Get visits scheduled on authenticated builder/agent properties
+ * @param {Object} req
+ * @param {Object} res
+ * @returns {Promise<QueryResult>}
+ */
+const getMyPropertyVisits = catchAsync(async (req, res) => {
+  const userRole = req.user.role;
+
+  if (!['builder', 'agent'].includes(userRole)) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only builders and agents can access property visits');
+  }
+
+  const options = pick(req.query, ['status', 'sortBy', 'limit', 'page']);
+  const userId = req.user._id || req.user.id;
+  const result = await getVisitsByPropertyOwner(userId, userRole, options);
+  res.send(result);
+});
+
+/**
  * Get scheduled properties for a specific user (admin/builder access)
  * @param {Object} req
  * @param {Object} res
@@ -399,6 +450,7 @@ export {
   cancelMyVisit,
   rescheduleMyVisit,
   getMyScheduledProperties,
+  getMyPropertyVisits,
   getUserScheduledProperties,
   getMasterTimeSlotsHandler,
 };

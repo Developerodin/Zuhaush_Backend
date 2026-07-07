@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import toJSON from './plugins/toJSON.plugin.js';
 import paginate from './plugins/paginate.plugin.js';
+import { normalizePropertyMediaForClient } from '../utils/propertyMedia.js';
 
 const propertySchema = mongoose.Schema(
   {
@@ -274,6 +275,12 @@ const propertySchema = mongoose.Schema(
   }
 );
 
+propertySchema.set('toJSON', {
+  transform(_doc, ret) {
+    return normalizePropertyMediaForClient(ret);
+  },
+});
+
 // add plugin that converts mongoose to json
 propertySchema.plugin(toJSON);
 propertySchema.plugin(paginate);
@@ -412,7 +419,44 @@ propertySchema.methods.generateSlug = function () {
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
-    .trim('-');
+    .replace(/^-+|-+$/g, '');
+};
+
+/**
+ * Resolve a unique SEO slug. Property names may repeat; slugs must not.
+ * @param {string} baseSlug
+ * @param {ObjectId} [excludeId]
+ * @returns {Promise<string>}
+ */
+propertySchema.statics.resolveUniqueSlug = async function (baseSlug, excludeId = null) {
+  const normalizedBase = (baseSlug || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  if (!normalizedBase) {
+    return `property-${Date.now()}`;
+  }
+
+  let slug = normalizedBase;
+  let counter = 2;
+
+  while (true) {
+    const filter = { 'seo.slug': slug };
+    if (excludeId) {
+      filter._id = { $ne: excludeId };
+    }
+
+    const existing = await this.findOne(filter).select('_id');
+    if (!existing) {
+      return slug;
+    }
+
+    slug = `${normalizedBase}-${counter}`;
+    counter += 1;
+  }
 };
 
 // Validate that either builder or agent is present
@@ -425,16 +469,35 @@ propertySchema.pre('validate', function (next) {
   }
 });
 
-// Generate slug before saving
-propertySchema.pre('save', function (next) {
-  const property = this;
-  
-  // Generate slug if not provided
-  if (!property.seo.slug && property.name) {
-    property.seo.slug = property.generateSlug();
+// Generate a unique slug before saving (duplicate property names are allowed)
+propertySchema.pre('save', async function (next) {
+  try {
+    const property = this;
+    const PropertyModel = property.constructor;
+
+    if (!property.seo) {
+      property.seo = {};
+    }
+
+    if (!property.seo.slug && property.name) {
+      const baseSlug = property.generateSlug();
+      property.seo.slug = await PropertyModel.resolveUniqueSlug(baseSlug, property._id);
+    } else if (property.seo.slug) {
+      property.seo.slug = property.seo.slug.toLowerCase().trim();
+      const isTaken = await PropertyModel.exists({
+        'seo.slug': property.seo.slug,
+        _id: { $ne: property._id },
+      });
+
+      if (isTaken) {
+        property.seo.slug = await PropertyModel.resolveUniqueSlug(property.seo.slug, property._id);
+      }
+    }
+
+    next();
+  } catch (error) {
+    next(error);
   }
-  
-  next();
 });
 
 /**

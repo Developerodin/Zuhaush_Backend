@@ -24,7 +24,7 @@ const createProperty = async (propertyBody) => {
 const queryProperties = async (filter, options) => {
   const defaultOptions = {
     populate: [
-      { path: 'builder', select: 'name email phone' },
+      { path: 'builder', select: 'name email phone logo' },
       { path: 'agent', select: 'name email contactNumber' }
     ],
     ...options
@@ -40,7 +40,7 @@ const queryProperties = async (filter, options) => {
  */
 const getPropertyById = async (id) => {
   return Property.findById(id)
-    .populate('builder', 'name email phone')
+    .populate('builder', 'name email phone logo')
     .populate('agent', 'name email contactNumber')
     .populate('approvedBy', 'name email');
 };
@@ -52,7 +52,7 @@ const getPropertyById = async (id) => {
  */
 const getPropertyBySlug = async (slug) => {
   return Property.findOne({ 'seo.slug': slug })
-    .populate('builder', 'name email phone')
+    .populate('builder', 'name email phone logo')
     .populate('agent', 'name email contactNumber')
     .populate('approvedBy', 'name email');
 };
@@ -397,7 +397,7 @@ const searchProperties = async (searchParams) => {
     limit: parseInt(limit),
     page: parseInt(page),
     populate: [
-      { path: 'builder', select: 'name email phone' },
+      { path: 'builder', select: 'name email phone logo' },
       { path: 'agent', select: 'name email contactNumber' }
     ],
   };
@@ -438,7 +438,7 @@ const getNearbyProperties = async (propertyId, radius = 5, limit = 10) => {
       $lte: property.geo.longitude + (radius / (111 * Math.cos(property.geo.latitude * Math.PI / 180))),
     },
   })
-    .populate('builder', 'name email phone')
+    .populate('builder', 'name email phone logo')
     .populate('agent', 'name email contactNumber')
     .limit(limit)
     .sort({ createdAt: -1 });
@@ -456,7 +456,7 @@ const getPropertiesByBuilder = async (builderId, options = {}) => {
   const filter = { builder: builderId };
   const defaultOptions = {
     populate: [
-      { path: 'builder', select: 'name email phone' },
+      { path: 'builder', select: 'name email phone logo' },
       { path: 'agent', select: 'name email contactNumber' }
     ],
     ...options
@@ -474,7 +474,7 @@ const getPropertiesByAgent = async (agentId, options = {}) => {
   const filter = { agent: agentId };
   const defaultOptions = {
     populate: [
-      { path: 'builder', select: 'name email phone' },
+      { path: 'builder', select: 'name email phone logo' },
       { path: 'agent', select: 'name email contactNumber' }
     ],
     ...options
@@ -534,7 +534,7 @@ const getPropertyStats = async (builderId, agentId = null) => {
 const addToShortlist = async (userIdOrBuilderId, propertyId, userType = 'user') => {
   // Check if property exists
   const property = await Property.findById(propertyId)
-    .populate('builder', 'name email phone')
+    .populate('builder', 'name email phone logo')
     .populate('agent', 'name email contactNumber');
   if (!property) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Property not found');
@@ -671,7 +671,7 @@ const getShortlistedProperties = async (userIdOrBuilderId, options = {}, userTyp
     limit: 10,
     page: 1,
     populate: [
-      { path: 'builder', select: 'name email phone' },
+      { path: 'builder', select: 'name email phone logo' },
       { path: 'agent', select: 'name email contactNumber' }
     ],
     ...options,
